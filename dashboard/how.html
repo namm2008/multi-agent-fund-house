@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the Fund House works</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f3f2ee; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --code:#2a78d6; --ai:#8a5cd6; --human:#1baf7a; --auto:#d03b3b; --warn:#c98a00;
+  --code-bg:rgba(42,120,214,.08); --ai-bg:rgba(138,92,214,.09); --human-bg:rgba(27,175,122,.10); --auto-bg:rgba(208,59,59,.08);
+  --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321; --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.12);
+    --code:#5a9ff0; --ai:#a985ec; --human:#2fc48f; --auto:#ec6b6b; --warn:#f0b43a;
+    --code-bg:rgba(90,159,240,.12); --ai-bg:rgba(169,133,236,.13); --human-bg:rgba(47,196,143,.13); --auto-bg:rgba(236,107,107,.12);
+    --accent:#5a9ff0;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321; --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.12);
+  --code:#5a9ff0; --ai:#a985ec; --human:#2fc48f; --auto:#ec6b6b; --warn:#f0b43a;
+  --code-bg:rgba(90,159,240,.12); --ai-bg:rgba(169,133,236,.13); --human-bg:rgba(47,196,143,.13); --auto-bg:rgba(236,107,107,.12);
+  --accent:#5a9ff0;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+a{color:var(--accent)}
+header{display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+header .brand{font-weight:700;margin-right:auto}
+header .brand small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.btn{border:1px solid var(--border);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--axis)}
+.btn:disabled{opacity:.4;cursor:default}
+#counter{font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:13px;min-width:56px;text-align:center}
+.deck{flex:1;position:relative;overflow:hidden}
+.slide{position:absolute;inset:0;padding:28px clamp(16px,4vw,64px) 24px;overflow-y:auto;display:none}
+.slide.on{display:block}
+.slide-inner{max-width:1180px;margin:0 auto}
+.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-size:clamp(26px,3.4vw,40px);line-height:1.15;margin:0 0 10px}
+h2{font-size:clamp(22px,2.6vw,30px);line-height:1.2;margin:0 0 14px}
+h2 + .lead{margin-top:-8px}
+h3{font-size:15px;margin:0 0 6px}
+.lead{font-size:clamp(15px,1.5vw,18px);color:var(--ink-2);max-width:880px;margin:0 0 20px}
+p{margin:0 0 10px}
+.grid{display:grid;gap:14px}
+.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:900px){.c3,.c4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.c2,.c3,.c4{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:0}
+.card p,.card li{color:var(--ink-2);font-size:14px}
+.card ul{margin:4px 0 0;padding-left:18px}
+.card li{margin:3px 0}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:2px 9px;margin-bottom:8px}
+.t-code{color:var(--code);background:var(--code-bg)} .t-ai{color:var(--ai);background:var(--ai-bg)}
+.t-human{color:var(--human);background:var(--human-bg)} .t-auto{color:var(--auto);background:var(--auto-bg)}
+.b-code{border-left:4px solid var(--code)} .b-ai{border-left:4px solid var(--ai)}
+.b-human{border-left:4px solid var(--human)} .b-auto{border-left:4px solid var(--auto)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin:4px 0 18px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow .step{flex:1 1 150px;min-width:140px}
+.flow .arrow{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:20px;padding:0 6px}
+@media (max-width:760px){.flow{flex-direction:column}.flow .arrow{transform:rotate(90deg);padding:4px 0}}
+.step .t{font-weight:650;font-size:14px;margin-bottom:4px}
+.step .d{font-size:13px;color:var(--ink-2)}
+.num{font-variant-numeric:tabular-nums;font-weight:650;color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--muted);font-weight:500;border-bottom:1px solid var(--axis);padding:7px 8px}
+td{border-bottom:1px solid var(--grid);padding:7px 8px;vertical-align:top;color:var(--ink-2)}
+td b{color:var(--ink)}
+.timeline{position:relative;margin:8px 0 0}
+.tl-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;padding:9px 0;border-bottom:1px solid var(--grid)}
+.tl-row:last-child{border:0}
+.tl-when{font-weight:650;font-variant-numeric:tabular-nums}
+.tl-when small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+@media (max-width:560px){.tl-row{grid-template-columns:1fr;gap:2px}}
+.funnel{display:flex;flex-direction:column;gap:8px;align-items:center}
+.funnel .lvl{border-radius:10px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);text-align:center}
+.funnel .lvl .t{font-weight:650}
+.funnel .lvl .d{font-size:13px;color:var(--ink-2)}
+.funnel .down{color:var(--muted);line-height:1}
+.ladder{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--border);margin:6px 0 4px}
+.ladder div{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff}
+.scale{position:relative;height:16px;font-size:11.5px;color:var(--muted)}
+.scale span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.scale span:first-child{transform:none}
+.scale span:last-child{transform:translateX(-100%)}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);background:var(--surface-2);border-radius:999px;padding:3px 10px}
+.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--human)}
+.callout{border:1px dashed var(--axis);border-radius:10px;padding:10px 14px;color:var(--ink-2);font-size:14px;margin-top:14px}
+.big{font-size:clamp(28px,3vw,36px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.dots{display:flex;gap:6px;justify-content:center;padding:10px 0 14px;flex-wrap:wrap}
+.dots button{width:9px;height:9px;border-radius:50%;border:0;background:var(--axis);padding:0;cursor:pointer}
+.dots button.on{background:var(--ink);transform:scale(1.25)}
+@media (max-width:620px){header{gap:8px;padding:8px 14px}#liveinfo,header .brand small{display:none}header .brand{flex-basis:100%}#backlink{margin-left:auto}.hide-sm{display:none}}
+@media print{
+  header,.dots{display:none}
+  body{display:block}
+  .deck{overflow:visible}
+  .slide{position:static;display:block !important;break-after:page;overflow:visible;padding:18px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">How the Fund House works<small id="fundname">Pipeline mechanics and buy / sell decision logic</small></div>
+  <span id="liveinfo" class="live" hidden></span>
+  <button class="btn" id="prev" aria-label="Previous slide">← Prev</button>
+  <span id="counter">1 / 1</span>
+  <button class="btn" id="next" aria-label="Next slide">Next →</button>
+  <a class="btn" id="backlink" href="/#/us/overview"><span class="hide-sm">Back to </span>Dashboard</a>
+</header>
+
+<div class="deck" id="deck">
+
+<!-- 1 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Overview</p>
+  <h1>Code screens and guards. The AI committee judges. You approve.</h1>
+  <p class="lead">A <span class="num" data-k="capital_short">US$200k</span> long-only paper fund in US large caps, held for months, with a hard
+  maximum drawdown of <span class="num" data-k="mdd">20%</span>. Every trade passes through three different kinds of decision-maker, and each one can only do its own job.</p>
+  <div class="legend">
+    <span style="--c:var(--code)">Deterministic code</span>
+    <span style="--c:var(--ai)">AI committee (Claude)</span>
+    <span style="--c:var(--human)">You</span>
+    <span style="--c:var(--auto)">Automatic risk actions (no approval)</span>
+  </div>
+  <div class="grid c4">
+    <div class="card b-code"><span class="tag t-code">Code</span><h3>Measures and limits</h3><p>Downloads data, ranks ~500 stocks, sets the market regime and exposure caps, enforces every hard limit, places orders.</p></div>
+    <div class="card b-ai"><span class="tag t-ai">AI committee</span><h3>Judges</h3><p>Eight roles read the research pack and the news, then pick names and weights from the top-<span data-k="pool">40</span> list. It can be more cautious than the code, never less.</p></div>
+    <div class="card b-human"><span class="tag t-human">You</span><h3>Approve</h3><p>Nothing the committee proposes trades until you approve it. Only you can edit the risk limits in <code>fh/config.py</code>.</p></div>
+    <div class="card b-auto"><span class="tag t-auto">Automatic</span><h3>Protects</h3><p>Stops, the drawdown ladder and the crash sentinel sell without asking, because waiting for a human in a crash costs money.</p></div>
+  </div>
+  <div class="callout">The AI never sees an order ticket. It writes a proposal file; code checks it, you approve it, code executes it.</div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">The pipeline</p>
+  <h2>From raw data to a filled order</h2>
+  <p class="lead">Five stages. Data flows left to right; the sentinel runs alongside all of them during US hours.</p>
+  <div class="flow">
+    <div class="card step b-code"><span class="tag t-code">Code</span><div class="t">1 · Data</div><div class="d">Daily prices (IBKR, Yahoo fallback), SEC filings (EDGAR), macro series (FRED).</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-code"><span class="tag t-code">Code</span><div class="t">2 · After-close engine</div><div class="d">Marks NAV, checks stops and the ladder, ranks stocks, sets the regime, writes the research pack.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-ai"><span class="tag t-ai">AI</span><div class="t">3 · Committee</div><div class="d">Eight roles turn the pack into a proposed target portfolio with written reasons.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-human"><span class="tag t-human">You</span><div class="t">4 · Approval</div><div class="d">Dashboard or terminal. Code re-checks the proposal against today's limits first.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-code"><span class="tag t-code">Code</span><div class="t">5 · Execution</div><div class="d">Re-sizes with live prices, sends orders to IBKR, books fills, refreshes protective stops.</div></div>
+  </div>
+  <div class="card b-auto" style="margin-top:14px"><span class="tag t-auto">Running alongside</span>
+    <p><b>Crash sentinel</b> checks the market and the fund every <span class="num" data-k="sentinel_min">5</span> minutes in US hours and can freeze buys or cut exposure on its own. <b>Daily risk brief</b> (AI) reports on health, drawdown and news each morning but cannot trade.</p></div>
+</div></section>
+
+<!-- 3 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">The schedule</p>
+  <h2>A week in the life (Hong Kong time)</h2>
+  <p class="lead">Everything runs on your Mac (launchd) or as Claude scheduled tasks that work in your fund folder.</p>
+  <div class="timeline">
+    <div class="tl-row"><div class="tl-when">Tue–Sat 06:30<small>after each US close</small></div><div><b>Data update.</b> New prices, fundamentals on Saturdays, macro. Marks the fund, checks stops and the drawdown ladder, queues risk exits, builds the research pack. Flags the pack "DATA STALE" if prices did not update.</div></div>
+    <div class="tl-row"><div class="tl-when">Tue–Sat 07:22</div><div><b>Daily risk brief</b> (AI). Pipeline health, NAV and drawdown, automatic actions, material news on holdings. Sends you a notification; escalates if needed.</div></div>
+    <div class="tl-row"><div class="tl-when">Sat 09:47</div><div><b>Weekly investment committee</b> (AI). Produces <code>target_portfolio.json</code> and the committee memo, or a "blocked" note if the data is missing or stale.</div></div>
+    <div class="tl-row"><div class="tl-when">Any time<small>after the committee</small></div><div><b>Your approval.</b> During US hours (09:40–15:40 New York) orders go within a minute; otherwise at the next scheduled run.</div></div>
+    <div class="tl-row"><div class="tl-when">Mon–Fri 21:40<small>retry 22:40</small></div><div><b>Execution.</b> Risk exits first, then deleveraging, then any approved rebalance. Unfilled approved orders are retried for up to <span class="num" data-k="retry">3</span> sessions.</div></div>
+    <div class="tl-row"><div class="tl-when">US hours<small>every 5 min</small></div><div><b>Crash sentinel.</b> Intraday drawdown, market shock and crash rules, kill switch.</div></div>
+  </div>
+</div></section>
+
+<!-- 4 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Step 1 · Who can be bought at all</p>
+  <h2>The universe and the eligibility filter</h2>
+  <p class="lead">The fund starts from the S&amp;P 500 and removes anything it cannot or should not trade.</p>
+  <div class="funnel">
+    <div class="lvl" style="width:min(100%,760px)"><div class="t">S&amp;P 500 constituents · ~503 stocks</div><div class="d">Refreshed every Saturday.</div></div>
+    <div class="down">▼</div>
+    <div class="lvl" style="width:min(100%,640px)"><div class="t">Price ≥ <span data-k="min_price">$10</span> and 20-day average traded value ≥ <span data-k="min_dv">$50M</span></div><div class="d">Liquid enough to buy and sell without moving the price.</div></div>
+    <div class="down">▼</div>
+    <div class="lvl" style="width:min(100%,520px)"><div class="t">Single stocks only</div><div class="d">No ETFs (built for accounts where US ETFs are blocked under PRIIPs). No shorts, options or leverage.</div></div>
+    <div class="down">▼</div>
+    <div class="lvl b-code" style="width:min(100%,420px)"><div class="t">Ranked by the quant screen</div><div class="d">Next slide.</div></div>
+  </div>
+</div></section>
+
+<!-- 5 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Step 2 · The quant screen</p>
+  <h2>Every stock gets a score; only the top <span data-k="pool">40</span> can be bought</h2>
+  <p class="lead">Each measure is a percentile rank against all other eligible stocks, so the score is relative: a stock gets in by beating ~460 others, not by being famous. Missing data counts as average.</p>
+  <div class="grid c4">
+    <div class="card b-code"><span class="tag t-code">35%</span><h3>Momentum</h3><ul><li>12-month return, skipping the last month</li><li>6-month return</li></ul></div>
+    <div class="card b-code"><span class="tag t-code">25%</span><h3>Quality</h3><ul><li>Return on equity</li><li>Operating margin</li><li>Free-cash-flow yield</li><li>Low debt</li><li>No share dilution</li></ul></div>
+    <div class="card b-code"><span class="tag t-code">20%</span><h3>Trend</h3><ul><li>Above its 200-day average</li><li>50-day above 200-day</li><li>Close to its 52-week high</li></ul></div>
+    <div class="card b-code"><span class="tag t-code">20%</span><h3>Growth</h3><ul><li>Revenue growth</li><li>Earnings growth</li></ul></div>
+  </div>
+  <div class="grid c2" style="margin-top:14px">
+    <div class="card"><h3>Lottery-ticket penalty</h3><p>The most volatile 10% of stocks lose 0.10 points, so a wild chart cannot ride momentum alone into the pool.</p></div>
+    <div class="card"><h3>The shadow portfolio: the benchmark to beat</h3><p>The top <span data-k="max_names">15</span> names, equal-weighted, max <span data-k="sector_names">4</span> per sector, at the same exposure cap. It is tracked daily. If the committee cannot explain why its picks beat the shadow, it should hold the shadow's picks.</p></div>
+  </div>
+</div></section>
+
+<!-- 6 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Step 3 · The market regime</p>
+  <h2>How much of the fund may be invested</h2>
+  <p class="lead">A simple, backtested points system decides the maximum exposure. The committee may stay below it, never above. <span id="regime-live" class="live" hidden></span></p>
+  <div class="grid c2">
+    <div class="card">
+      <h3>Points</h3>
+      <table>
+        <tr><th>Signal</th><th>Points</th></tr>
+        <tr><td><b>Equal-weight index above its 10-month average</b><br>the rule that kept S&amp;P drawdowns under ~20% since 1950 in the stress test</td><td>+2 / −2</td></tr>
+        <tr><td><b>Breadth:</b> share of stocks above their 200-day average</td><td>&gt;60%: +1 · &lt;40%: −1</td></tr>
+        <tr><td><b>Credit:</b> high-yield spread widened 1 point or more in 3 months</td><td>−1</td></tr>
+        <tr><td><b>Fear:</b> VIX above 30</td><td>−1</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Regime → exposure cap</h3>
+      <table>
+        <tr><th>Total points</th><th>Regime</th><th>Max invested</th></tr>
+        <tr><td>2 or more</td><td><b>Risk on</b></td><td class="num" data-k="cap_on">100%</td></tr>
+        <tr><td>−1 to 1</td><td><b>Neutral</b></td><td class="num" data-k="cap_neutral">70%</td></tr>
+        <tr><td>−2 or less</td><td><b>Risk off</b></td><td class="num" data-k="cap_off">30%</td></tr>
+      </table>
+      <p style="margin-top:10px">The binding cap each day is the <b>lowest</b> of: regime cap, drawdown-ladder cap, and <span data-k="cash_max">98%</span> (at least <span data-k="cash_buf">2%</span> always stays in cash).</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- 7 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Step 4 · The committee</p>
+  <h2>Eight roles, in a fixed order</h2>
+  <p class="lead">The four analysts work in parallel and cannot see each other's reports, so they cannot anchor on one another. Every number must come from the pack or a cited source.</p>
+  <div class="flow">
+    <div class="step" style="flex:2 1 300px">
+      <div class="grid c2">
+        <div class="card b-ai"><div class="t"><b>Macro strategist</b></div><p>Cycle phase, rates, inflation, upcoming events. Recommends a max exposure ≤ the code cap.</p></div>
+        <div class="card b-ai"><div class="t"><b>Sector analyst</b></div><p>Sector leadership, breadth, hidden themes that span sectors (e.g. "oil shock").</p></div>
+        <div class="card b-ai"><div class="t"><b>Fundamental analyst</b></div><p>Latest results, guidance, red flags, next earnings date. Rates Buy / Hold / Avoid.</p></div>
+        <div class="card b-ai"><div class="t"><b>Technical analyst</b></div><p>Trend strength and entry timing: buy now / wait / avoid. Flags very volatile names.</p></div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="card step b-ai"><div class="t">Portfolio strategist</div><div class="d">Sets the shape: target exposure, sector tilts, theme caps, number of names, how fast to deploy.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-ai"><div class="t">Portfolio manager</div><div class="d">Picks names and weights within that shape; explains every difference from the shadow portfolio.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-ai"><div class="t">Risk manager</div><div class="d">Runs the code checker, adds judgement (earnings, concentration, −10% scenario). Veto; PM gets one revision.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-ai"><div class="t">Fund manager (CIO)</div><div class="d">Final call: deploy / rebalance / hold / de-risk. Writes the memo you read.</div></div>
+  </div>
+  <div class="callout"><b>Bias to inaction.</b> "No change this week" is a normal, often correct outcome. Replacing a holding needs the new name to be clearly better, not marginally.</div>
+</div></section>
+
+<!-- 8 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Decision logic · Buying</p>
+  <h2>How a stock earns a place, and how big it gets</h2>
+  <div class="grid c2">
+    <div class="funnel">
+      <div class="lvl b-code" style="width:100%"><div class="t">In the top <span data-k="pool">40</span> of the screen</div><div class="d">Hard rule in code. Anything else is dropped.</div></div>
+      <div class="down">▼</div>
+      <div class="lvl b-ai" style="width:94%"><div class="t">Fundamental: Buy, no unresolved red flag</div><div class="d">A guidance cut or accounting issue overrides a great score.</div></div>
+      <div class="down">▼</div>
+      <div class="lvl b-ai" style="width:88%"><div class="t">Technical: buy now (or "wait" at a starter weight)</div><div class="d">Avoid chasing names that are stretched far above their trend.</div></div>
+      <div class="down">▼</div>
+      <div class="lvl b-ai" style="width:82%"><div class="t">Sector favoured or neutral, theme budget left</div><div class="d">Keeps the portfolio from being one macro bet in disguise.</div></div>
+      <div class="down">▼</div>
+      <div class="lvl b-human" style="width:76%"><div class="t">Survives the risk check and your approval</div></div>
+    </div>
+    <div>
+      <div class="card"><h3>Sizing</h3>
+        <ul>
+          <li><b><span data-k="min_w">4%</span>–<span data-k="max_w">10%</span></b> per stock, more for higher conviction.</li>
+          <li><b>Starter weight</b> (near 4%) when results are due within ~10 trading days; add after the numbers.</li>
+          <li><b>Smaller weights</b> for very volatile names.</li>
+          <li><b><span data-k="min_names">10</span>–<span data-k="max_names">15</span> names</b> once more than 30% is invested.</li>
+          <li><b>≤ <span data-k="sector_cap">30%</span></b> in any one sector (code scales it down if breached).</li>
+          <li><b>Staging:</b> a new fund is usually deployed over 2–3 weeks, not at one price.</li>
+        </ul>
+      </div>
+      <div class="card" style="margin-top:12px"><h3>Example: first committee (16 Oct)</h3>
+        <p>11 names, 54% invested although the code allowed 100%: a cluster of Fed, earnings and GDP events in the next two weeks. LLY and CVX were cut to smaller weights by the risk manager because both reported within 10 days.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 9 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Decision logic · Selling</p>
+  <h2>Two ways a position is reduced</h2>
+  <div class="grid c2">
+    <div class="card b-ai"><span class="tag t-ai">Committee decides, you approve</span>
+      <ul>
+        <li><b>Thesis broken:</b> a holding rated Avoid, or with a broken trend, must be exited unless the PM writes an explicit reason to keep it.</li>
+        <li><b>Fell out of the top <span data-k="pool">40</span>:</b> may be held or trimmed, but code refuses to add to it.</li>
+        <li><b>Better use of the money:</b> only if the replacement is clearly better; one-way turnover is budgeted at <span data-k="turnover">40%</span> a month.</li>
+        <li><b>Drift:</b> weight changes smaller than <span data-k="band">2</span> percentage points are ignored, so small drifts do not generate trades.</li>
+        <li><b>De-risk:</b> the CIO can cut exposure below the cap at any time.</li>
+      </ul>
+    </div>
+    <div class="card b-auto"><span class="tag t-auto">Automatic, no approval</span>
+      <ul>
+        <li><b>Stop from entry:</b> close <span data-k="stop_entry">15%</span> below the average buy price → sold at the next open.</li>
+        <li><b>Trailing stop:</b> once in profit, close <span data-k="stop_trail">25%</span> below its highest close → sold.</li>
+        <li><b>Rank exit:</b> a holding that ranks worse than <span data-k="rank_exit">60</span> on the screen for <span data-k="rank_weeks">2</span> weekly reviews in a row → sold at the next open. It catches fading names before a stop is hit.</li>
+        <li><b>Server-side stop:</b> a standing order at IBKR <span data-k="stop_server">20%</span> below entry, which works even if your Mac is off.</li>
+        <li><b>Drawdown ladder</b> and <b>crash sentinel:</b> cut every position pro-rata (next slide).</li>
+        <li><b>Kill switch / hard floor:</b> the fund halts; no buys until you restart it.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout">Order of execution each session: risk exits → deleveraging → your approved rebalance. Within a rebalance, sells go first so they fund the buys.</div>
+</div></section>
+
+<!-- 10 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Hard limits</p>
+  <h2>What the code does to every proposal</h2>
+  <p class="lead">The same check runs three times: by the risk manager, when you approve, and again at execution with live prices. The AI can argue with a prompt; it cannot argue with this.</p>
+  <table>
+    <tr><th style="width:36px">#</th><th>Check</th><th>If it fails</th></tr>
+    <tr><td>1</td><td><b>Stock is in the universe</b> (no ETFs, no unknown tickers)</td><td>Dropped</td></tr>
+    <tr><td>2</td><td><b>In the top <span data-k="pool">40</span></b> or already held</td><td>Dropped; a held name outside the pool cannot be added to</td></tr>
+    <tr><td>3</td><td><b>Weight between <span data-k="min_w">4%</span> and <span data-k="max_w">10%</span></b></td><td>Clipped to 10%, or removed if below 4%</td></tr>
+    <tr><td>4</td><td><b>Sector ≤ <span data-k="sector_cap">30%</span></b></td><td>That sector scaled down</td></tr>
+    <tr><td>5</td><td><b>Total invested ≤ the lowest of</b> regime cap, ladder cap, <span data-k="cash_max">98%</span>, and the committee's own target</td><td>Every weight scaled down</td></tr>
+    <tr><td>6</td><td><b>Buys frozen</b> by the sentinel</td><td>No weight may increase</td></tr>
+    <tr><td>7</td><td><b>Fund halted</b> (kill switch or hard floor)</td><td>Target emptied; only sells allowed</td></tr>
+    <tr><td>8</td><td><b>Single order ≤ <span data-k="max_order">$30,000</span></b> (fat-finger guard)</td><td>Whole rebalance blocked, alert sent</td></tr>
+    <tr><td>9</td><td>Name count <span data-k="min_names">10</span>–<span data-k="max_names">15</span>, monthly turnover ≤ <span data-k="turnover">40%</span></td><td>Warning shown to you</td></tr>
+  </table>
+</div></section>
+
+<!-- 11 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Drawdown control</p>
+  <h2>The ladder and the crash sentinel</h2>
+  <p class="lead">Drawdown is measured from the fund's high-water mark. The ladder stops at <span data-k="floor">−15%</span>, leaving a buffer before the <span data-k="mdd">20%</span> mandate for overnight gaps and slippage. <span id="dd-live" class="live" hidden></span></p>
+  <div class="card">
+    <h3>Drawdown ladder: maximum invested</h3>
+    <div class="ladder" id="ladderbar">
+      <div style="flex:8;background:var(--human)">100%</div>
+      <div style="flex:4;background:var(--warn)">75%</div>
+      <div style="flex:3;background:#e07b3c">50%</div>
+      <div style="flex:5;background:var(--auto)">0% · halt</div>
+    </div>
+    <div class="scale" id="ladderscale"><span style="left:0">0%</span><span style="left:40%">−8%</span><span style="left:60%">−12%</span><span style="left:75%">−15%</span><span style="left:100%">−20% mandate</span></div>
+    <p style="margin-top:10px">Applied automatically at the next session (and intraday by the sentinel). After a halt, the fund stays in cash until you restart it.</p>
+  </div>
+  <div class="grid c3" style="margin-top:14px">
+    <div class="card b-auto"><span class="tag t-auto">Shock</span><p>Market proxy down <b data-k="shock">3%</b> in a day, or VIX ≥ <b data-k="vix_alert">30</b> → <b>new buys frozen</b> for about 3 sessions, alert sent.</p></div>
+    <div class="card b-auto"><span class="tag t-auto">Crash</span><p>Proxy down <b data-k="crash">5%</b> in a day or <b data-k="crash3">8%</b> over 3 days, or VIX ≥ <b data-k="vix_crash">40</b> → <b>exposure cut to <span data-k="crash_exp">50%</span></b> at once, every holding pro-rata.</p></div>
+    <div class="card b-auto"><span class="tag t-auto">Kill switch</span><p>Create a file named <code>STOP_TRADING</code> in the fund folder → fund halts, no new buys.</p></div>
+  </div>
+  <div class="callout">The sentinel has no AI in it on purpose: it must be fast, cheap and predictable. Pro-rata cutting avoids a panicked call about which stock is "weakest" mid-crash.</div>
+</div></section>
+
+<!-- 12 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Step 5 · Execution</p>
+  <h2>What happens after you click Approve</h2>
+  <div class="flow">
+    <div class="card step b-human"><div class="t">Approve</div><div class="d">Recorded in the audit trail with the exact target weights.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-code"><div class="t">When</div><div class="d">09:40–15:40 New York: within a minute. Otherwise 21:40 HKT on the next US trading day.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-code"><div class="t">Re-check</div><div class="d">Limits re-applied with live prices and today's caps; orders re-sized to whole shares.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-code"><div class="t">Orders</div><div class="d">Sells first, then buys funded by cash (keeping 2%). IBKR Adaptive market orders.</div></div>
+    <div class="arrow">→</div>
+    <div class="card step b-code"><div class="t">After</div><div class="d">Fills booked to the fund ledger; standing −20% stops placed at IBKR.</div></div>
+  </div>
+  <div class="grid c3" style="margin-top:14px">
+    <div class="card"><h3>Why market orders</h3><p>The paper account only gets 15-minute-delayed quotes, which cannot price a limit order reliably. Adaptive orders work against IBKR's live price.</p></div>
+    <div class="card"><h3>If something does not fill</h3><p>A rejected order is re-sent as a plain market order. Unfilled approved orders are retried for up to <span data-k="retry">3</span> sessions, then the committee sees the gap.</p></div>
+    <div class="card"><h3>Two runs cannot collide</h3><p>A lock file prevents overlapping runs, and an approval already traded today is never sent twice.</p></div>
+  </div>
+</div></section>
+
+<!-- 13 -->
+<section class="slide"><div class="slide-inner">
+  <p class="kicker">Your controls and the honest caveats</p>
+  <h2>What you control, and what the system cannot promise</h2>
+  <div class="grid c2">
+    <div class="card b-human"><span class="tag t-human">You control</span>
+      <ul>
+        <li>Approve or reject each proposal (Approval tab or <code>scripts/approve.py</code>).</li>
+        <li>Every risk limit, only by editing <code>fh/config.py</code>; agents can read limits but never change them.</li>
+        <li>The kill switch (<code>STOP_TRADING</code> file).</li>
+        <li>Restarting the fund after a hard-floor halt.</li>
+        <li>Everything is traceable in the Audit trail and <code>research/&lt;date&gt;/</code>.</li>
+      </ul>
+    </div>
+    <div class="card"><span class="tag" style="color:var(--warn);background:rgba(201,138,0,.12)">Caveats</span>
+      <ul>
+        <li><b>The AI part cannot be backtested.</b> Models have read the future; only the code (screen, regime, ladder, stops) was backtested.</li>
+        <li><b>Survivorship bias.</b> Backtests use today's S&amp;P 500 members, which flatters results.</li>
+        <li><b>Delayed data.</b> 15-minute quotes on paper; stops are checked on closing prices.</li>
+        <li><b>Gaps.</b> A stock can open far below its stop; the ladder keeps a 5-point buffer for this.</li>
+        <li><b>Paper trading.</b> Fills on paper are kinder than in a live market.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="callout">All limits on these slides are read live from the fund's configuration each time you open this page.</p>
+</div></section>
+
+</div>
+<div class="dots" id="dots"></div>
+
+<script>
+(function(){ try{ const t = localStorage.getItem("fh-theme"); if (t) document.documentElement.dataset.theme = t; }catch(e){} })();
+(function(){
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  const dots = document.getElementById("dots");
+  let i = 0;
+  slides.forEach((_, k) => {
+    const b = document.createElement("button");
+    b.setAttribute("aria-label", "Slide " + (k + 1));
+    b.onclick = () => show(k);
+    dots.appendChild(b);
+  });
+  function show(k){
+    i = Math.max(0, Math.min(slides.length - 1, k));
+    slides.forEach((s, n) => s.classList.toggle("on", n === i));
+    Array.from(dots.children).forEach((d, n) => d.classList.toggle("on", n === i));
+    document.getElementById("counter").textContent = (i + 1) + " / " + slides.length;
+    document.getElementById("prev").disabled = i === 0;
+    document.getElementById("next").disabled = i === slides.length - 1;
+    slides[i].scrollTop = 0;
+    history.replaceState(null, "", "#" + (i + 1));
+  }
+  document.getElementById("prev").onclick = () => show(i - 1);
+  document.getElementById("next").onclick = () => show(i + 1);
+  document.addEventListener("keydown", e => {
+    if (e.target.closest("input,textarea")) return;
+    if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    if (e.key === "Home") show(0);
+    if (e.key === "End") show(slides.length - 1);
+  });
+  let x0 = null;
+  document.getElementById("deck").addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, {passive:true});
+  document.getElementById("deck").addEventListener("touchend", e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 60) show(i + (dx < 0 ? 1 : -1));
+    x0 = null;
+  });
+  show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+
+  // ---- live values from the fund configuration ----
+  const pct = (v, d = 0) => (v * 100).toFixed(d) + "%";
+  const money = v => "$" + Math.round(v).toLocaleString("en-US");
+  fetch("/api/mechanics").then(r => r.ok ? r.json() : null).then(m => {
+    if (!m || !m.cfg) return;
+    const c = m.cfg;
+    const lad = c.dd_ladder || [];
+    const vals = {
+      capital_short: "US$" + Math.round(c.starting_capital / 1000) + "k",
+      mdd: pct(c.max_drawdown_mandate), pool: c.candidate_pool,
+      min_price: "$" + c.min_price, min_dv: "$" + Math.round(c.min_dollar_volume / 1e6) + "M",
+      min_w: pct(c.min_weight), max_w: pct(c.max_weight), min_names: c.target_names[0], max_names: c.target_names[1],
+      sector_cap: pct(c.max_sector_weight), sector_names: Math.max(1, Math.floor(c.max_sector_weight * c.target_names[1])),
+      turnover: pct(c.max_monthly_turnover), band: Math.round(c.rebalance_band * 100),
+      cash_buf: pct(c.cash_buffer), cash_max: pct(1 - c.cash_buffer),
+      cap_on: pct(c.regime_caps.risk_on), cap_neutral: pct(c.regime_caps.neutral), cap_off: pct(c.regime_caps.risk_off),
+      stop_entry: pct(c.stop_loss_from_entry), stop_trail: pct(c.trailing_stop_from_peak), stop_server: pct(c.server_side_stop),
+      rank_exit: c.rank_exit_threshold ?? 60, rank_weeks: c.rank_exit_weeks ?? 2,
+      shock: pct(-c.shock_intraday_drop), crash: pct(-c.crash_intraday_drop), crash3: pct(-c.crash_3day_drop),
+      vix_alert: c.vix_alert, vix_crash: c.vix_crash, crash_exp: pct(c.crash_exposure),
+      max_order: money(c.max_order_value), retry: c.rebalance_retry_days,
+      sentinel_min: Math.round(c.sentinel_interval_sec / 60),
+      floor: lad.length ? pct(lad[lad.length - 1][0]).replace("-", "−") : "−15%"
+    };
+    document.querySelectorAll("[data-k]").forEach(el => {
+      const v = vals[el.dataset.k];
+      if (v !== undefined && v !== null) el.textContent = v;
+    });
+    if (c.fund_name) document.getElementById("fundname").textContent = c.fund_name;
+
+    // ladder bar from config
+    if (lad.length) {
+      const mdd = c.max_drawdown_mandate, segs = [], labels = [["0%", 0]];
+      let prev = 0, prevCap = 1;
+      const colors = ["var(--human)", "var(--warn)", "#e07b3c", "var(--auto)"];
+      lad.forEach(([th, cap], n) => {
+        segs.push(`<div style="flex:${Math.round((-th - prev) * 1000)};background:${colors[Math.min(n, 2)]}">${pct(prevCap)}</div>`);
+        labels.push([pct(th), -th / mdd * 100]); prev = -th; prevCap = cap;
+      });
+      segs.push(`<div style="flex:${Math.round((mdd - prev) * 1000)};background:var(--auto)">${prevCap === 0 ? "0% · halt" : pct(prevCap)}</div>`);
+      labels.push(["−" + pct(mdd) + " mandate", 100]);
+      document.getElementById("ladderbar").innerHTML = segs.join("");
+      document.getElementById("ladderscale").innerHTML = labels.map(([l, x]) => `<span style="left:${x}%">${l.replace("-", "−")}</span>`).join("");
+    }
+
+    // live state
+    const reg = m.regime || {};
+    if (reg.regime) {
+      const el = document.getElementById("regime-live");
+      el.hidden = false;
+      el.textContent = `Now (${m.asof}): ${reg.regime.replace("_", " ")}, score ${reg.score}, cap ${pct(reg.exposure_cap)}`;
+    }
+    if (m.drawdown !== null && m.drawdown !== undefined) {
+      const el = document.getElementById("dd-live");
+      el.hidden = false;
+      el.textContent = `Now (${m.asof}): drawdown ${pct(m.drawdown, 1)}, binding cap ${pct((m.risk_caps || {}).gross_cap ?? 1)}`
+        + (m.halted ? " · HALTED" : "") + (m.buys_frozen_until ? ` · buys frozen until ${m.buys_frozen_until}` : "");
+      const top = document.getElementById("liveinfo");
+      top.hidden = false;
+      top.textContent = `Live config · data ${m.asof}`;
+    }
+  }).catch(() => {});
+})();
+</script>
+</body>
+</html>

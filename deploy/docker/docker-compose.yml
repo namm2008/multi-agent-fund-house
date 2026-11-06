@@ -1,0 +1,29 @@
+# VPS option (later). IB Gateway + the fund's Python jobs, 24/7, on a ~US$6–12/month Linux box.
+# Community image for IB Gateway with IBC auto-login: https://github.com/gnzsnz/ib-gateway-docker
+# Put credentials in a .env file next to this compose file (never commit it):
+#   TWS_USERID=...   TWS_PASSWORD=...
+services:
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:stable
+    restart: always
+    environment:
+      TWS_USERID: ${TWS_USERID}
+      TWS_PASSWORD: ${TWS_PASSWORD}
+      TRADING_MODE: paper
+      READ_ONLY_API: "no"
+      TIME_ZONE: America/New_York
+      AUTO_RESTART_TIME: "11:59 PM"
+    ports:
+      - "127.0.0.1:4002:4004"   # paper API (image maps 4004 internally)
+  fundhouse:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    restart: always
+    depends_on: [ib-gateway]
+    environment:
+      FH_IB_HOST: ib-gateway
+      FH_IB_PORT: "4004"
+      FH_CONTACT_EMAIL: ${FH_CONTACT_EMAIL}
+    volumes:
+      - ../..:/app          # repo folder (state, research, logs persist)

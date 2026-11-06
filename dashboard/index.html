@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fund House</title>
+<script src="/static/chart.umd.min.js"></script>
+<script src="/static/marked.min.js"></script>
+<script src="/static/purify.min.js"></script>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f3f2ee; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --good-ink:#006300; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --accent:#2a78d6; --accent-ink:#fff;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321; --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good-ink:#0ca30c; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321; --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good-ink:#0ca30c; --accent:#3987e5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent)}
+header{position:sticky;top:0;z-index:5;background:var(--page);border-bottom:1px solid var(--border)}
+html{scrollbar-gutter:stable}
+.bar{max-width:1320px;margin:0 auto;padding:12px 20px 6px;display:flex;gap:16px;align-items:center}
+.brandcol{flex:1 1 auto;min-width:0;margin-right:auto;display:flex;flex-direction:column;gap:6px}
+.brand{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brandcol .pills{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:21px}
+.brandcol .pills::-webkit-scrollbar{display:none}
+.brandcol .pill{font-size:11.5px;padding:1px 8px;white-space:nowrap}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.sub{max-width:1320px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:12px;min-height:42px}
+.covertitle{padding:10px 14px;text-shadow:0 0 .7px currentColor;border-bottom:2px solid var(--accent);white-space:nowrap}
+@media (max-width:800px){header{position:static}.bar{flex-wrap:wrap}.brandcol{width:100%}}
+nav{display:flex;gap:4px;overflow-x:auto;min-width:0;flex:1 1 auto}
+nav button{border:0;background:none;color:var(--ink-2);padding:10px 14px;font:inherit;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+nav button.on{color:var(--ink);border-bottom-color:var(--accent);text-shadow:0 0 .7px currentColor}
+nav a.navlink{color:var(--ink-2);padding:10px 14px;text-decoration:none;white-space:nowrap;margin-left:auto;border-bottom:2px solid transparent}
+nav a.navlink:hover{color:var(--ink)}
+nav .badge{background:var(--critical);color:#fff;border-radius:10px;padding:0 7px;font-size:11px;margin-left:6px}
+main{max-width:1320px;margin:0 auto;padding:20px}
+.grid{display:grid;gap:16px}
+.g5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.g2{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.g2e{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:1100px){.g5{grid-template-columns:repeat(2,minmax(0,1fr))}.g2,.g2e{grid-template-columns:1fr}}
+@media (max-width:560px){.g5{grid-template-columns:1fr} main{padding:12px 16px}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;min-width:0}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em}
+.card h2{margin:0 0 12px;font-size:17px}
+.kpi .v{font-size:26px;font-weight:650;margin:2px 0}
+.kpi .s{color:var(--ink-2);font-size:12.5px}
+.pos{color:var(--good-ink)} .neg{color:var(--critical)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--ink-2);background:var(--surface)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.st-good{background:var(--good)} .st-warning{background:var(--warning)} .st-serious{background:var(--serious)} .st-critical{background:var(--critical)} .st-muted{background:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:500;border-bottom:1px solid var(--axis);padding:6px 8px;white-space:nowrap;cursor:default}
+td{border-bottom:1px solid var(--grid);padding:6px 8px;vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tbl{overflow-x:auto}
+.muted{color:var(--muted)} .small{font-size:12px}
+.meter{position:relative;height:14px;background:var(--surface-2);border-radius:7px;margin:10px 0 18px}
+.meter .fill{position:absolute;top:0;bottom:0;border-radius:7px}
+.meter .tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink-2)}
+.meter .tl{position:absolute;top:18px;font-size:10.5px;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+.chart{position:relative;height:280px}
+.chart.sm{height:170px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-bottom:8px}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.alert{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--grid)}
+.alert:last-child{border:0}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;border:1px solid var(--border);white-space:nowrap;height:fit-content}
+.tag.RISK,.tag.critical,.tag.CRITICAL,.tag.REJECTED,.tag.rejected{color:var(--critical);border-color:var(--critical)}
+.tag.ERROR{color:var(--critical);border-color:var(--critical)}
+.tag.WARN,.tag.warning{color:#a26b00;border-color:var(--warning)}
+.tag.APPROVED,.tag.approved,.tag.BUY,.tag.good{color:var(--good-ink);border-color:var(--good)}
+.tag.SELL{color:var(--serious);border-color:var(--serious)}
+.weeks{display:flex;flex-direction:column;gap:6px;max-height:75vh;overflow:auto}
+.week{border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--surface)}
+.week.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.week .d{font-weight:600}
+.agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.agent{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--surface);cursor:pointer}
+.agent:hover{border-color:var(--accent)}
+.agent .r{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.agent .t{font-weight:600;margin:3px 0}
+.flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:4px 0 12px}
+.flow b{background:var(--surface-2);border-radius:6px;padding:3px 8px;font-weight:500;color:var(--ink)}
+.md{font-size:13.5px;overflow-wrap:anywhere}
+.md table{margin:8px 0} .md pre{background:var(--surface-2);padding:10px;border-radius:6px;overflow:auto;font-size:12px}
+.md h1{font-size:18px} .md h2{font-size:15px} .md h3{font-size:14px}
+details{border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin:8px 0;background:var(--surface)}
+summary{cursor:pointer;font-weight:600}
+.btn{border:1px solid var(--border);background:var(--surface);color:var(--ink);padding:8px 16px;border-radius:8px;font:inherit;cursor:pointer}
+.btn.primary{background:var(--good-ink);color:#fff;border-color:transparent;font-weight:600}
+.btn.danger{color:var(--critical);border-color:var(--critical)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--axis);border-radius:8px;padding:8px 10px;width:100%}
+textarea{min-height:60px}
+.banner{padding:10px 14px;border-radius:8px;margin-bottom:16px;border:1px solid}
+.banner.warn{border-color:var(--warning);background:color-mix(in srgb,var(--warning) 12%,transparent)}
+.banner.crit{border-color:var(--critical);background:color-mix(in srgb,var(--critical) 10%,transparent)}
+.banner.ok{border-color:var(--good);background:color-mix(in srgb,var(--good) 10%,transparent)}
+.hbar{display:grid;grid-template-columns:70px 1fr 54px;gap:8px;align-items:center;font-size:12.5px;margin:3px 0}
+.hbar .track{position:relative;height:16px}
+.hbar .b{position:absolute;left:0;height:7px;border-radius:0 4px 4px 0}
+.hbar .b.t{top:0;background:var(--s1)} .hbar .b.c{top:9px;background:var(--s2)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{height:16px}
+.theme{border:1px solid var(--border);background:var(--surface);color:var(--ink-2);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit}
+.cm{grid-template-columns:230px minmax(0,1fr)}
+@media (max-width:800px){.cm{grid-template-columns:1fr}.weeks{max-height:220px}}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+/* ---------- events calendar ---------- */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .dow{font-size:11px;color:var(--muted);text-align:center;padding:2px 0;text-transform:uppercase;letter-spacing:.04em}
+.cal .day{min-height:74px;border:1px solid var(--grid);border-radius:6px;padding:4px 5px;background:var(--surface);display:flex;flex-direction:column;gap:3px;min-width:0}
+.cal .day.past{opacity:.45}
+.cal .day.wkend{background:var(--surface-2)}
+.cal .day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.cal .dn{font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cal .day.today .dn{color:var(--accent);font-weight:700}
+.ev{font-size:11px;line-height:1.25;padding:2px 5px;border-radius:4px;border-left:3px solid;background:var(--surface-2);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev.macro{border-color:var(--s1)} .ev.earnings{border-color:var(--s2)} .ev.committee{border-color:var(--s3)}
+.evdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.evdot.macro{background:var(--s1)} .evdot.earnings{background:var(--s2)} .evdot.committee{background:var(--s3)}
+.evlist{display:grid;grid-template-columns:auto auto 1fr;gap:4px 12px;font-size:12.5px;margin-top:12px;align-items:baseline}
+@media (max-width:700px){.cal .day{min-height:44px;padding:3px}.ev{font-size:0;padding:0;width:8px;height:8px;border-radius:50%;border-left:0}
+  .ev.macro{background:var(--s1)} .ev.earnings{background:var(--s2)} .ev.committee{background:var(--s3)}
+  .cal .day .evs{display:flex;gap:3px;flex-wrap:wrap}}
+/* ---------- multi-fund ---------- */
+[hidden]{display:none!important}
+.stats{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.stats .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.stats .v{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums;margin:2px 0}
+.stats .s{font-size:12px;color:var(--ink-2)}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.g4{grid-template-columns:1fr}}
+.switch{display:inline-flex;border:1px solid var(--border);border-radius:9px;padding:2px;background:var(--surface-2);gap:2px;overflow-x:auto;max-width:100%}
+.switch button{border:0;background:none;color:var(--ink-2);padding:6px 12px;border-radius:7px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.switch button.on{background:var(--surface);color:var(--ink);text-shadow:0 0 .7px currentColor;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.switch .ccy{font-size:10.5px;color:var(--muted);font-weight:500}
+.switch .badge{background:var(--critical);color:#fff;border-radius:10px;padding:0 6px;font-size:10.5px}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.fundgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px}
+@media (max-width:560px){.fundgrid{grid-template-columns:1fr}}
+.fcard{display:flex;flex-direction:column;gap:12px}
+.fcard .hd{display:flex;align-items:flex-start;gap:10px}
+.fcard .hd h2{margin:0}
+.fcard .strat{font-size:12.5px;color:var(--ink-2)}
+.fcard .nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.fcard .nums .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.fcard .nums .v{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+.fcard .nums .s{font-size:12px;color:var(--ink-2)}
+.spark{position:relative;height:90px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.minimeter{position:relative;height:6px;background:var(--surface-2);border-radius:3px;margin-top:5px}
+.minimeter i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.ev.c1{border-color:var(--s1)} .ev.c2{border-color:var(--s2)} .ev.c3{border-color:var(--s3)}
+.evdot.c1{background:var(--s1)} .evdot.c2{background:var(--s2)} .evdot.c3{background:var(--s3)}
+@media (max-width:700px){.ev.c1{background:var(--s1)} .ev.c2{background:var(--s2)} .ev.c3{background:var(--s3)}}
+.ftag{font-size:11px;padding:0 6px;border-radius:4px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brandcol"><div class="brand" id="brand">Fund House<small>loading…</small></div><div class="pills" id="pills"></div></div>
+    <div class="switch" id="switch" role="tablist" aria-label="Fund"></div>
+    <button class="theme" id="themeBtn" title="Toggle light/dark">◐</button>
+  </div>
+  <div class="sub">
+    <nav id="tabs" hidden>
+      <button data-tab="overview">Overview</button>
+      <button data-tab="approval">Approval <span class="badge" id="pendBadge" hidden>1</span></button>
+      <button data-tab="committee">Committee &amp; agents</button>
+      <button data-tab="market">Market &amp; screen</button>
+      <button data-tab="audit">Audit trail</button>
+      <a class="navlink" id="howLink" href="/how" hidden>How it works</a>
+    </nav>
+    <div class="covertitle" id="coverTitle">Overview of all funds</div>
+  </div>
+</header>
+<main id="main"><div class="empty">Loading…</div></main>
+
+<script>
+const TOKEN = "__FH_TOKEN__";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SYM = {USD: "$", HKD: "HK$", EUR: "€", GBP: "£", JPY: "¥", CNH: "CN¥", SGD: "S$"};
+let CCY = "USD";
+const cur = (v, d=2, ccy) => { const c = ccy || CCY; if (v==null||isNaN(v)) return "–";
+  const s = (SYM[c] ?? (c + " ")) + Math.abs(Number(v)).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+  return v < 0 ? "−" + s : s; };
+const curs = (v, d=2, ccy) => v==null||isNaN(v) ? "–" : (v>=0 ? "+" : "") + cur(v, d, ccy);
+const big = (v, ccy) => v==null||isNaN(v) ? "–" : Math.abs(v) >= 1e6 ? cur(v/1e6, 2, ccy) + "m" : cur(v, 0, ccy);
+const pct = (v, d=1, sign=false) => { if (v==null||isNaN(v)) return "–"; let s = (v*100).toFixed(d); if (Number(s) === 0) s = (0).toFixed(d);
+  return (sign && Number(s) > 0 ? "+" : "") + s + "%"; };
+const num = (v, d=1) => v==null||isNaN(v) ? "–" : Number(v).toFixed(d);
+const hhmm = t => t ? String(t).replace("T"," ").slice(5,16) : "";
+const cls = v => v==null ? "" : v>=0 ? "pos" : "neg";
+const md = s => DOMPurify.sanitize(marked.parse(s || ""));
+const alpha = (hex, a) => { const h = hex.replace("#",""); const n = parseInt(h.length===3 ? h.split("").map(c=>c+c).join("") : h, 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const SERIES = ["--s1","--s2","--s3"];
+let STATE = {fund: null, tab: "overview", cover: null, ov: null, weeks: null, week: null, weekDate: null, audit: null, mkt: null,
+             weekFilter: "committee", holdSort: "weight", holdAsc: false, openHold: null, charts: []};
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({error: "bad response"}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+const fapi = (what, q="") => api(`/api/f/${encodeURIComponent(STATE.fund)}/${what}${q}`);
+function killCharts(){ STATE.charts.forEach(c => c.destroy()); STATE.charts = []; }
+
+/* ---------- spec-driven cell formatting (column specs come from the fund's adapter) ---------- */
+function fmt(v, kind, r){
+  switch(kind){
+    case "sym": return `<b>${esc(v)}</b>`;
+    case "qty": return num(v, v % 1 ? 2 : 0);
+    case "money": return cur(v);
+    case "money0": return cur(v, 0);
+    case "money3": return cur(v, v != null && Math.abs(v) < 20 ? 3 : 2);
+    case "moneys": return `<span class="${cls(v)}">${curs(v)}</span>`;
+    case "price": return `<span title="${esc(r && r.price_source)}${r && r.bid ? ` · bid ${r.bid} / ask ${r.ask}` : ""}">${cur(v, v != null && Math.abs(v) < 20 ? 3 : 2)}</span>`;
+    case "pct": return pct(v);
+    case "pct0": return pct(v, 0);
+    case "pct0s": return `<span class="${cls(v)}">${pct(v,0,true)}</span>`;
+    case "pct1s": return `<span class="${cls(v)}">${pct(v,1,true)}</span>`;
+    case "pct2s": return `<span class="${cls(v)}">${pct(v,2,true)}</span>`;
+    case "num0": return num(v,0); case "num1": return num(v,1); case "num2": return num(v,2);
+    case "int": return v==null ? "–" : Number(v).toLocaleString();
+    case "rank": return v==null ? '<span class="neg" title="Outside the screen today">out</span>' : esc(v);
+    case "yn": return v==null ? "–" : v ? "yes" : "no";
+    case "mcap": return v ? cur(v/1e9, 1) + "bn" : "–";
+    case "pe": return r.pe_live==null ? '<span class="muted" title="Loss-making or no SEC data">n/m</span>' : `${num(r.pe_live)}<div class="small muted">sector ${num(r.sector_median_pe)}</div>`;
+    case "stop": { const near = r.dist_to_stop != null && r.dist_to_stop > -0.03;
+      return `${near ? '<span class="tag RISK">near</span> ' : ""}${pct(r.dist_to_stop,1)}<div class="small muted">${cur(r.active_stop)}</div>`; }
+    case "raw": return esc(v ?? "–");
+    default: return esc(v ?? "–");
+  }
+}
+const isNumCol = k => !["sym","text","yn"].includes(k);
+
+/* ---------- theme ---------- */
+(function(){ try{ const t = localStorage.getItem("fh-theme"); if (t) document.documentElement.dataset.theme = t; }catch(e){} })();
+$("#themeBtn").onclick = () => {
+  const c = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const n = c === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = n;
+  try{ localStorage.setItem("fh-theme", n); }catch(e){}
+  render();
+};
+
+/* ---------- header: brand, fund switcher, status pills ---------- */
+function setPills(list){ $("#pills").innerHTML = (list||[]).map(([st, t]) => `<span class="pill"><span class="dot st-${st}"></span>${esc(t)}</span>`).join(""); }
+function header(){
+  const c = STATE.cover;
+  const funds = c ? c.funds : [];
+  $("#switch").innerHTML = `<button data-f="" class="${STATE.fund ? "" : "on"}">All funds</button>` +
+    funds.map(f => `<button data-f="${esc(f.id)}" class="${STATE.fund===f.id ? "on" : ""}">${esc(f.label)} <span class="ccy">${esc(f.currency)}</span>${(f.pending||f.halted) ? '<span class="badge">!</span>' : ""}</button>`).join("");
+  document.querySelectorAll("#switch button").forEach(b => b.onclick = () => nav(b.dataset.f || null, STATE.fund ? STATE.tab : "overview"));
+  $("#tabs").hidden = !STATE.fund; $("#coverTitle").hidden = !!STATE.fund;
+  if (!STATE.fund){
+    $("#brand").innerHTML = `Fund House<small>${funds.length} funds · updated ${esc(c ? c.now_hkt.replace("T"," ").slice(0,16) : "")} HKT</small>`;
+    const gw = funds.map(f => (f.pills||[])[0]).find(Boolean);
+    setPills(gw ? [gw] : []);
+    return;
+  }
+  const o = STATE.ov; if (!o) return;
+  const demo = ((o.account||{}).account || "").includes("DEMO");
+  $("#brand").innerHTML = `${esc(o.fund_name)}${demo ? ' <span class="tag WARN">DEMO DATA</span>' : ""}
+    <small>As of ${esc(o.latest.asof || "—")} · updated ${esc(o.now_hkt.replace("T"," ").slice(0,16))} HKT</small>`;
+  setPills(o.pills);
+  $("#pendBadge").hidden = !o.pending_approval;
+  $("#howLink").hidden = !o.mechanics; $("#howLink").href = "/how/" + encodeURIComponent(o.id);
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === STATE.tab));
+}
+
+/* ---------- cover: all funds ---------- */
+function renderCover(){
+  const c = STATE.cover, F = c.funds;
+  const tot = c.total, a = c.account || {};
+  const pend = F.filter(f => f.pending).length, queued = F.filter(f => f.queued).length;
+  const card = f => {
+    if (f.error) return `<div class="card fcard"><div class="hd"><h2>${esc(f.label)}</h2></div><div class="banner crit">${esc(f.error)}</div></div>`;
+    const m = f.marks || {};
+    const ddW = f.mandate ? Math.min(100, Math.abs(m.drawdown||0) / f.mandate * 100) : 0;
+    const tags = [
+      f.pending ? `<span class="tag WARN">Proposal awaiting approval</span>` : "",
+      f.queued ? `<span class="tag WARN">Approved — orders queued</span>` : "",
+      f.halted ? `<span class="tag CRITICAL">HALTED</span>` : "",
+      f.stale ? `<span class="tag ERROR">Data stale</span>` : "",
+      !f.pending && !f.queued && !f.halted && !f.stale ? `<span class="tag good">On track</span>` : ""].join("");
+    return `<div class="card fcard">
+      <div class="hd"><div><h2>${esc(f.label)} <span class="ftag">${esc(f.currency)}</span></h2><div class="strat">${esc(f.strategy)}</div></div>
+        <button class="btn" style="margin-left:auto" data-open="${esc(f.id)}">Open →</button></div>
+      <div class="tags">${tags}</div>
+      <div class="nums">
+        <div><div class="k">NAV</div><div class="v">${big(m.nav, f.currency)}</div><div class="s"><span class="${cls(f.since)}">${pct(f.since,2,true)}</span> on ${big(f.capital, f.currency)}</div></div>
+        <div><div class="k">Today</div><div class="v ${cls(m.day_pct)}">${pct(m.day_pct,2,true)}</div><div class="s">${m.day_pnl==null ? "–" : curs(m.day_pnl, 0, f.currency)}</div></div>
+        <div><div class="k">Drawdown</div><div class="v ${(m.drawdown||0)<0?"neg":""}">${pct(m.drawdown||0)}</div>
+          <div class="minimeter" title="Mandate limit −${pct(f.mandate,0)}"><i style="width:${ddW}%;background:${ddW>66?"var(--critical)":ddW>33?"var(--serious)":"var(--s1)"}"></i></div><div class="s">limit −${pct(f.mandate,0)}</div></div>
+        <div><div class="k">Invested</div><div class="v">${pct(m.gross,0)}</div><div class="s">${f.n_pos} holdings</div></div>
+        <div><div class="k">${esc(f.bench.label || "Benchmark")}</div><div class="v ${cls(f.bench.ret)}">${pct(f.bench.ret,1,true)}</div><div class="s">since first NAV</div></div>
+        ${f.extra ? `<div><div class="k">${esc(f.extra.short || f.extra.title)}</div><div class="v">${esc(f.extra.value)}</div><div class="s">${esc(f.extra.sub || "")}</div></div>`
+          : `<div><div class="k">Data</div><div class="v" style="font-size:15px">${esc(f.asof || "—")}</div><div class="s">${m.live ? "live marks " + esc(hhmm(m.time_hkt)) : "last close"}</div></div>`}
+      </div>
+      ${f.nav_index.length > 1 ? `<div class="spark"><canvas id="sp-${esc(f.id)}" aria-label="${esc(f.label)} NAV indexed"></canvas></div>` : `<div class="small muted">NAV chart starts after the first trading day${f.inception && f.inception !== "TBD" ? "" : " (fund not trading yet)"}.</div>`}
+      <div>${f.top.length ? `<h3>Largest holdings</h3>${f.top.map(r => `<div class="hbar" style="grid-template-columns:minmax(0,1fr) 54px"><span class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>${esc(r.symbol)}</b> ${esc(r.name||"")}</span><span class="small n">${pct(r.weight)}</span></div>`).join("")}` : '<div class="small muted">No positions yet.</div>'}</div>
+      <div class="small muted">Data ${esc(f.asof || "—")} · ${m.live ? "marked to IBKR prices " + esc(hhmm(m.time_hkt)) + " HKT" : "marked to the last close"}</div>
+      ${(f.pills||[]).length ? `<div class="pills">${f.pills.map(([st,t]) => `<span class="pill"><span class="dot st-${st}"></span>${esc(t)}</span>`).join("")}</div>` : ""}
+    </div>`;
+  };
+  const row = f => { const m = f.marks || {}; return `<tr style="cursor:pointer" data-open="${esc(f.id)}"><td><b>${esc(f.label)}</b></td><td>${esc(f.currency)}</td>
+    <td class="n">${cur(m.nav,0,f.currency)}</td><td class="n">${cur(f.capital,0,f.currency)}</td><td class="n ${cls(f.since)}">${pct(f.since,2,true)}</td>
+    <td class="n ${cls(m.day_pct)}">${pct(m.day_pct,2,true)}</td><td class="n">${pct(m.drawdown||0)}</td><td class="n">${pct(m.gross,0)}</td><td class="n">${f.n_pos ?? "–"}</td>
+    <td class="n ${cls(f.bench && f.bench.ret)}">${pct(f.bench && f.bench.ret,1,true)}</td><td class="n">${f.extra && /yield/i.test(f.extra.title) ? esc(f.extra.value) : "–"}</td><td>${esc(f.asof||"—")}</td></tr>`; };
+  $("#main").innerHTML = `
+  <div class="grid g4">
+    <div class="card kpi"><h3>All funds (${esc(tot ? tot.currency : "—")})</h3>
+      <div class="v">${tot ? big(tot.nav, tot.currency) : "–"}</div>
+      <div class="s">${tot ? `<span class="${cls(tot.nav/tot.capital-1)}">${pct(tot.nav/tot.capital-1,2,true)}</span> on ${big(tot.capital, tot.currency)} committed` : (c.fx_missing && c.fx_missing.length ? "No FX rate yet for " + esc(c.fx_missing.join(", ")) + " — press refresh on a fund page" : "Waiting for the first IBKR account snapshot")}</div>
+      <div class="s muted">${tot ? `1 ${esc(tot.currency)} = ` + Object.entries(tot.fx).filter(([k]) => k !== tot.currency).map(([k,v]) => `${num(1/v, 1/v >= 5 ? 2 : 4)} ${esc(k)}`).join(" = ") + ` · source ${esc([...new Set(Object.entries(c.fx_source||{}).filter(([k]) => k !== tot.currency).map(([,v]) => v.split(" ")[0]))].join(", ") || "IBKR")}` : ""}</div></div>
+    <div class="card kpi"><h3>IBKR paper account</h3><div class="v">${a.net_liquidation!=null ? big(a.net_liquidation, a.currency==="BASE"?"USD":a.currency) : "–"}</div>
+      <div class="s">Shared by all funds · each fund keeps its own ledger</div><div class="s muted">${esc(a.account||"not connected yet")}${a.time_hkt ? " · " + esc(hhmm(a.time_hkt)) + " HKT" : ""}</div></div>
+    <div class="card kpi"><h3>Decisions for you</h3><div class="v">${pend}</div>
+      <div class="s">${pend ? F.filter(f=>f.pending).map(f => `<a href="#/${esc(f.id)}/approval">${esc(f.label)}: ${esc(f.pending.folder)}</a>`).join("<br>") : "No proposal waiting"}</div>
+      <div class="s muted">${queued ? queued + " approved target(s) still executing" : ""}</div></div>
+    <div class="card kpi"><h3>Funds</h3><div class="v">${F.length}</div><div class="s">${F.map(f => esc(f.label)).join(" · ")}</div>
+      <div class="s muted">${F.filter(f=>f.halted).length ? '<span class="neg">' + F.filter(f=>f.halted).length + ' halted</span>' : "none halted"}</div></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="fundgrid">${F.map(card).join("")}</div>
+  <div class="spacer"></div>
+  <div class="card"><h2>Side by side</h2><div class="tbl"><table><tr><th>Fund</th><th>Ccy</th><th class="n">NAV</th><th class="n">Capital</th><th class="n">Since inception</th><th class="n">Today</th><th class="n">Drawdown</th><th class="n">Invested</th><th class="n">Holdings</th><th class="n">Benchmark</th><th class="n">Div. yield</th><th>Data as of</th></tr>${F.map(row).join("")}</table></div>
+    <p class="small muted">Each fund in its own currency. Returns are since each fund's inception; benchmark = the fund's main benchmark since its first NAV record.</p>
+    ${F.filter(f => f.nav_index && f.nav_index.length > 1).length > 1 ? '<h3 style="margin-top:12px">Performance, each fund indexed to 100</h3><div class="chart"><canvas id="cAll"></canvas></div>' : ""}</div>
+  <div class="spacer"></div>
+  <div class="grid g2e">
+    <div class="card"><h2>Coming up (all funds)</h2>${c.events.length ? `<div class="evlist" style="grid-template-columns:auto auto 1fr;margin-top:0">${c.events.map(e => `<span class="n small">${esc(e.date)}</span><span class="ftag">${esc(e.fund_label)}</span><span class="small">${esc(e.label)}</span>`).join("")}</div>` : '<div class="muted small">Nothing scheduled.</div>'}</div>
+    <div class="card"><h2>Recent warnings (all funds)</h2>${c.alerts.map(al => `<div class="alert"><span class="tag ${esc(al.level)}">${esc(al.level)}</span><div><div><span class="ftag">${esc(al.fund_label)}</span> ${esc(al.msg)}</div><div class="small muted">${esc((al.time_hkt||"").replace("T"," ").slice(0,16))} HKT</div></div></div>`).join("") || '<div class="muted small">No warnings.</div>'}</div>
+  </div>`;
+  document.querySelectorAll("[data-open]").forEach(el => el.onclick = () => nav(el.dataset.open, "overview"));
+  if (!window.Chart) return;
+  const lineOpts = (yfmt, axes) => { const o = baseOpts(yfmt); if (!axes){ o.scales.x.display = false; o.scales.y.ticks.maxTicksLimit = 3; } return o; };
+  F.forEach(f => { const el = document.getElementById("sp-" + f.id); if (!el) return;
+    STATE.charts.push(new Chart(el, {type:"line", data:{labels: f.nav_index.map(r => r.date), datasets:[{label: f.label, data: f.nav_index.map(r => r.v), borderColor: css("--s1"), backgroundColor: alpha(css("--s1"), .12), fill: "origin", borderWidth: 2, pointRadius: 0, tension: .15}]},
+      options: Object.assign(lineOpts(v => v==null ? "–" : v.toFixed(1), false), {})})); });
+  if ($("#cAll")){
+    const dates = [...new Set(F.flatMap(f => (f.nav_index||[]).map(r => r.date)))].sort();
+    STATE.charts.push(new Chart($("#cAll"), {type:"line", data:{labels: dates, datasets: F.filter(f => f.nav_index.length).map((f,i) => { const m = Object.fromEntries(f.nav_index.map(r => [r.date, r.v]));
+      return {label: f.label, data: dates.map(d => m[d] ?? null), borderColor: css(SERIES[i % 3]), backgroundColor: css(SERIES[i % 3]), borderWidth: 2, pointRadius: 0, spanGaps: true, tension: .15}; })},
+      options: (() => { const o = baseOpts(v => v==null ? "–" : v.toFixed(1)); o.plugins.legend = {display: true, labels: {color: css("--ink-2"), boxWidth: 12, boxHeight: 3}}; return o; })()}));
+  }
+}
+
+/* ---------- fund overview ---------- */
+function ladderMeter(dd, ladder, mandate){
+  const W = mandate * 1.1;
+  const x = v => Math.min(100, Math.abs(v) / W * 100);
+  const L = (ladder||[]).slice().sort((a,b) => b[0]-a[0]);
+  const worst = L.length ? L[L.length-1][0] : -mandate;
+  const col = dd <= worst ? "var(--critical)" : (L.length && dd <= L[0][0]) ? "var(--serious)" : "var(--s1)";
+  let ticks = L.map(([t, c]) => `<div class="tick" title="${pct(t,0)}: max invested ${pct(c,0)}" style="left:${x(t)}%"></div>`).join("");
+  ticks += `<div class="tick" title="Mandate limit ${pct(-mandate,0)}" style="left:${x(-mandate)}%;background:var(--critical)"></div>`;
+  const steps = L.map(([t, c]) => `${pct(t,0)} → ${c ? pct(c,0) + " max" : (L.length === 1 ? "halt, sell all" : "cash")}`).join(" · ");
+  return `<div class="meter" style="margin-bottom:8px" role="img" aria-label="Drawdown ${pct(dd)}"><div class="fill" style="width:${x(dd)}%;background:${col}"></div>${ticks}</div>
+    <div class="small muted">${L.length > 1 ? "Ladder" : "Rule"}: ${steps} · <span class="neg">mandate ${pct(-mandate,0)}</span></div>`;
+}
+function ageTxt(h, warnH){ if (h==null) return '<span class="muted">never ran</span>'; const st = h > warnH ? "critical" : "good";
+  return `<span class="dot st-${st}"></span> ${h < 1 ? "<1" : Math.round(h)}h ago`; }
+
+function renderOverview(){
+  const o = STATE.ov, m = o.marks, a = o.account || {}, hd = o.holdings || {rows: []};
+  const navh = o.nav_history || [], B = o.benchmarks || [];
+  const nav = m.nav, since = nav != null ? nav / o.starting_capital - 1 : null;
+  let banners = (o.banners||[]).map(([lvl, h]) => `<div class="banner ${lvl}">${h}</div>`).join("");
+  if (o.pending_approval) banners += `<div class="banner warn"><b>Proposal waiting for your approval</b> (${esc(o.pending_approval.folder)}, ${esc(o.pending_approval.decision)}). <a href="#/${esc(o.id)}/approval">Review →</a></div>`;
+  const first = navh[0] || {}, last = navh[navh.length-1] || {};
+  const ret = k => first[k] && last[k] ? last[k]/first[k] - 1 : null;
+  const fundRet = first.nav && nav ? nav/first.nav - 1 : null;
+  const rows = hd.rows || [];
+  const bySector = {}; rows.forEach(h => bySector[h.sector||"?"] = (bySector[h.sector||"?"]||0) + h.weight);
+  const asOfTxt = m.live ? `Marked to IBKR prices at <b>${esc(hhmm(m.time_hkt))} HKT</b>${m.market_open ? ` · ${esc(o.market_name)} open` : ` · ${esc(o.market_name)} closed (last prices)`}`
+    : `Marked to the <b>${esc(o.latest.asof || "—")}</b> close${o.refresh ? " — press refresh for current prices" : ""}`;
+  const acctCcy = a.currency === "BASE" || !a.currency ? "USD" : a.currency;
+  const orders = (a.open_orders||[]).filter(r => (r.currency || "USD") === o.currency);
+  $("#main").innerHTML = banners + `
+  <div class="row" style="margin-bottom:12px"><span class="small">${asOfTxt}</span><span id="refMsg" class="small" style="margin-left:auto"></span>
+    ${o.refresh ? '<button class="btn primary" id="refBtn" title="Pull current prices and balances from IB Gateway (read-only)">↻ Refresh portfolio</button>' : ""}</div>
+  <div class="grid g5">
+    <div class="card kpi"><h3>IBKR paper account</h3><div class="v">${cur(a.net_liquidation, 2, acctCcy)}</div>
+      <div class="s">Cash ${cur(a.cash, 0, acctCcy)} · Unrealised <span class="${cls(a.unrealized_pnl)}">${cur(a.unrealized_pnl, 2, acctCcy)}</span></div>
+      <div class="s muted">${esc(a.account||"not connected yet")} · shared by all funds${a.time_hkt ? " · " + esc(hhmm(a.time_hkt)) + " HKT" : ""}</div></div>
+    <div class="card kpi"><h3>Fund NAV (${esc(o.currency)})</h3><div class="v">${cur(nav, Math.abs(nav||0) >= 1e5 ? 0 : 2)}</div>
+      <div class="s">Today <span class="${cls(m.day_pnl)}">${m.day_pnl==null ? "–" : curs(m.day_pnl)} (${pct(m.day_pct,2,true)})</span></div>
+      <div class="s"><span class="${cls(since)}">${pct(since,2,true)}</span> since inception (${cur(o.starting_capital,0)})</div></div>
+    <div class="card kpi"><h3>Drawdown vs limit</h3><div class="v ${(m.drawdown||0)<-0.00005?'neg':''}">${pct(m.drawdown||0, Math.abs(m.drawdown||0) < 0.01 ? 2 : 1)}</div>
+      ${ladderMeter(m.drawdown||0, o.risk.ladder, o.risk.mandate)}<div class="s muted">High-water mark ${cur(m.hwm)}</div></div>
+    <div class="card kpi"><h3>Invested (gross)</h3><div class="v">${pct(m.gross,0)}</div>
+      ${(o.invested_lines||[]).map(l => `<div class="s">${esc(l)}</div>`).join("")}<div class="s muted">${rows.length} holdings · cash ${cur(m.cash,0)}</div></div>
+
+    <div class="card kpi"><h3>vs benchmarks (period)</h3><div class="s">Fund <b class="${cls(fundRet)}">${pct(fundRet,1,true)}</b></div>
+      ${B.map(b => `<div class="s">${esc(b.label)} <b class="${cls(ret(b.key))}">${pct(ret(b.key),1,true)}</b></div>`).join("")}
+      <div class="s muted">Since the first NAV record${navh.length ? " (" + esc(first.date) + ")" : ""}</div></div>
+  </div>
+  ${(o.kpis_extra||[]).map(k => `<div class="spacer"></div><div class="card"><h2>${esc(k.title)}</h2>
+    <div class="grid stats">${(k.stats||[]).map(([l,v,sub]) => `<div><div class="k">${esc(l)}</div><div class="v">${esc(v)}</div><div class="s">${esc(sub||"")}</div></div>`).join("")}</div>
+    ${k.note ? `<p class="small muted" style="margin:12px 0 0">${esc(k.note)}</p>` : ""}</div>`).join("")}
+  <div class="spacer"></div>
+  ${eventsCard(o.events)}
+  <div class="spacer"></div>
+  <div class="grid g2">
+    <div class="card"><h2>Performance, indexed to 100</h2>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Fund</span>${B.map((b,i) => `<span><i style="background:var(${SERIES[(i+1)%3]})"></i>${esc(b.label)}</span>`).join("")}</div>
+      ${navh.length > 1 ? '<div class="chart"><canvas id="cPerf" aria-label="Fund vs benchmarks"></canvas></div><h3 style="margin-top:14px">Fund drawdown</h3><div class="chart sm"><canvas id="cDD" aria-label="Drawdown"></canvas></div>'
+        : '<div class="empty">The chart starts after the first close with positions.</div>'}
+    </div>
+    <div class="card"><h2>Alerts</h2>
+      ${(o.alerts||[]).slice(0,6).map(al => `<div class="alert"><span class="tag ${esc(al.level)}">${esc(al.level)}</span><div><div>${esc(al.msg)}</div><div class="small muted">${esc((al.time_hkt||"").replace("T"," ").slice(0,16))} HKT</div></div></div>`).join("") || '<div class="muted">No alerts.</div>'}
+      ${(o.alerts||[]).length > 6 ? `<div class="small"><a href="#/${esc(o.id)}/audit">All alerts in the audit trail →</a></div>` : ""}
+      ${(o.side_info||[]).map(([t, h]) => `<h3 style="margin-top:16px">${esc(t)}</h3><div class="small">${h}</div>`).join("")}
+      <h3 style="margin-top:16px">Pipeline health</h3>
+      <div class="small">${(o.health||[]).map(([l, h, w]) => `${esc(l)}: ${ageTxt(h, w)}`).join("<br>")}</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="card"><div class="row"><h2 style="margin:0">Holdings</h2><span class="small muted" style="margin-left:auto">Click a row for details · click a header to sort</span></div>
+    ${hd.error ? `<div class="banner crit">${esc(hd.error)}</div>` : ""}
+    <div class="tbl" id="holdTbl" style="margin-top:8px"></div>
+    ${hd.note ? `<p class="small muted">${esc(hd.note)}</p>` : ""}</div>
+  <div class="spacer"></div>
+  <div class="grid g2e">
+    <div class="card"><h2>Sector allocation</h2>
+      ${Object.keys(bySector).length ? Object.entries(bySector).sort((x,y)=>y[1]-x[1]).map(([s,w]) =>
+        `<div class="hbar" style="grid-template-columns:150px 1fr 48px"><span class="small">${esc(s)}</span><span class="track"><span class="b t" style="width:${Math.min(100, w/o.risk.max_sector*100)}%;top:4px"></span></span><span class="small n">${pct(w)}</span></div>`).join("")
+        + `<div class="small muted" style="margin-top:6px">Bar full width = ${pct(o.risk.max_sector,0)} sector cap</div>` : '<div class="muted">All cash.</div>'}</div>
+    <div class="card"><h2>Open orders at IBKR (${esc(o.currency)})</h2>
+      ${orders.length ? `<div class="tbl"><table><tr><th>Sym</th><th>Side</th><th class="n">Qty</th><th>Type</th><th class="n">Price</th><th>Status</th></tr>${orders.map(r=>`<tr><td>${esc(r.symbol)}</td><td>${esc(r.action)}</td><td class="n">${r.qty}</td><td>${esc(r.type)} ${esc(r.tif)}</td><td class="n">${r.price??""}</td><td class="small">${esc(r.status)}</td></tr>`).join("")}</table></div>` : '<div class="muted small">None.</div>'}
+    </div>
+  </div>`;
+  if ($("#refBtn")) $("#refBtn").onclick = refreshPortfolio;
+  drawHoldings(hd);
+  perfCharts(navh, B);
+}
+function eventsCard(E){
+  if (!E || E.error || !E.start) return `<div class="card"><h2>Upcoming events</h2><div class="muted small">${esc((E && E.error) || "No event data.")}</div></div>`;
+  const K = Object.fromEntries((E.kinds||[]).map(([k, l, c]) => [k, {l, c}]));
+  const kc = k => "c" + ((K[k]||{}).c || 1);
+  const base = new Date(E.start + "T00:00:00");
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const byDay = {}; E.events.forEach(e => (byDay[e.date] = byDay[e.date] || []).push(e));
+  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  let cells = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => `<div class="dow">${d}</div>`).join("");
+  for (let i = 0; i < E.days; i++){
+    const d = new Date(base); d.setDate(base.getDate() + i);
+    const k = iso(d), evs = byDay[k] || [];
+    const c = ["day", k < E.today ? "past" : "", k === E.today ? "today" : "", d.getDay() % 6 === 0 ? "wkend" : ""].join(" ");
+    const label = (d.getDate() === 1 || i === 0) ? `${mon[d.getMonth()]} ${d.getDate()}` : d.getDate();
+    cells += `<div class="${c}" title="${esc(evs.map(e => e.label + " — " + e.detail).join("\n"))}"><span class="dn">${label}</span><div class="evs">${evs.map(e => `<div class="ev ${kc(e.kind)}">${esc(e.label)}</div>`).join("")}</div></div>`;
+  }
+  const horizon = (() => { const d = new Date(E.today + "T00:00:00"); d.setDate(d.getDate() + 14); return iso(d); })();
+  const next = E.events.filter(e => e.date >= E.today && e.date <= horizon && e.kind !== "committee").slice(0, 8);
+  const fd = k => { const d = new Date(k + "T00:00:00"); return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()] + " " + d.getDate() + " " + mon[d.getMonth()]; };
+  const g = E.gate || {};
+  return `<div class="card"><div class="row"><h2 style="margin:0">Upcoming events</h2>
+      <div class="legend" style="margin:0 0 0 auto">${(E.kinds||[]).map(([k,l,c]) => `<span><span class="evdot c${c}"></span>${esc(l)}</span>`).join("")}</div></div>
+    <div class="small muted" style="margin:4px 0 10px">${esc(E.note||"")}</div>
+    <div class="cal">${cells}</div>
+    ${next.length ? `<h3 style="margin-top:14px">Next two weeks</h3><div class="evlist">${next.map(e => `<span class="n">${esc(fd(e.date))}</span><span><span class="evdot ${kc(e.kind)}"></span>${esc((K[e.kind]||{}).l||e.kind)}</span><span>${esc(e.label)}</span>`).join("")}</div>` : ""}
+    ${g.text ? `<div class="small" style="margin-top:12px">${g.triggered ? '<span class="tag WARN">TRIGGERED</span> ' : ""}<span class="${g.triggered ? "" : "muted"}">${esc(g.text)}</span></div>` : ""}
+    ${E.warning ? `<div class="banner warn" style="margin-top:10px">${esc(E.warning)}</div>` : ""}
+  </div>`;
+}
+async function refreshPortfolio(){
+  const b = $("#refBtn"), m = $("#refMsg");
+  b.disabled = true; b.textContent = "Refreshing…"; m.textContent = "Contacting IB Gateway…"; m.className = "small muted";
+  let res;
+  try { res = await api("/api/refresh-portfolio", {method:"POST", headers:{"X-FH-Token":TOKEN}}); }
+  catch(e){ res = {ok:false, message:e.message}; }
+  await load(); await render();
+  const m2 = $("#refMsg");
+  if (m2) m2.innerHTML = res.ok ? `<span class="pos">✓ ${esc(res.message)}</span>` : `<span class="neg">${esc(res.message)}</span>`;
+}
+function drawHoldings(hd){
+  const el = $("#holdTbl"); if (!el) return;
+  const rows = hd.rows || [], C = hd.cols || [];
+  if (!rows.length){ el.innerHTML = '<div class="muted">No positions — the fund is in cash.</div>'; return; }
+  const nav = STATE.ov.marks.nav;
+  const k = STATE.holdSort || "weight", asc = !!STATE.holdAsc;
+  const sorted = rows.slice().sort((a,b) => { const x=a[k], y=b[k]; if (x==null) return 1; if (y==null) return -1; return (x>y?1:x<y?-1:0)*(asc?1:-1); });
+  const tot = rows.reduce((t,r)=>({v:t.v+r.market_value, p:t.p+r.unrealized_pnl, c:t.c+r.qty*r.avg_cost, d:t.d+(r.prev_close? r.qty*(r.price-r.prev_close):0)}), {v:0,p:0,c:0,d:0});
+  const totals = {avg_cost: cur(tot.c), day_chg: `<span class="${cls(tot.d)}">${curs(tot.d)}</span>`, market_value: cur(tot.v), weight: pct(nav ? tot.v/nav : null),
+    unrealized_pnl: `<span class="${cls(tot.p)}">${curs(tot.p)}</span>`, unrealized_pct: `<span class="${cls(tot.p)}">${pct(tot.c ? tot.p/tot.c : null,1,true)}</span>`};
+  const cell = (r, [c,,f]) => c === "symbol" ? `<b>${esc(r.symbol)}</b> <span class="muted small">▸</span><div class="small muted" style="max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name||"")}${r.sector? " · "+esc(r.sector):""}</div>` : fmt(r[c], f, r);
+  el.innerHTML = `<table><tr>${C.map(([c,t,f]) => `<th class="${isNumCol(f)?"n":""}" data-k="${c}" style="cursor:pointer">${esc(t)}${k===c?(asc?" ▲":" ▼"):""}</th>`).join("")}</tr>
+    ${sorted.map(r => `<tr class="hrow" data-s="${esc(r.symbol)}" style="cursor:pointer">${C.map(col => `<td class="${isNumCol(col[2])?"n":""}">${cell(r,col)}</td>`).join("")}</tr>
+      <tr class="hdet" data-s="${esc(r.symbol)}" ${STATE.openHold===r.symbol?"":"hidden"}><td colspan="${C.length}">${holdingDetail(r, hd.detail||[])}</td></tr>`).join("")}
+    <tr style="font-weight:600">${C.map(([c],i) => `<td class="n">${i===0 ? `Total (${rows.length})` : (totals[c]||"")}</td>`).join("")}</tr></table>`;
+  el.querySelectorAll("th[data-k]").forEach(th => th.onclick = () => {
+    const c = th.dataset.k; STATE.holdAsc = STATE.holdSort===c ? !STATE.holdAsc : c==="symbol"; STATE.holdSort = c; drawHoldings(hd); });
+  el.querySelectorAll("tr.hrow").forEach(tr => tr.onclick = () => {
+    const s = tr.dataset.s; STATE.openHold = STATE.openHold===s ? null : s;
+    el.querySelectorAll("tr.hdet").forEach(d => d.hidden = d.dataset.s !== STATE.openHold); });
+}
+function holdingDetail(r, D){
+  const kv = (k, v) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-bottom:1px solid var(--grid)"><span class="muted">${esc(k)}</span><span class="n">${v}</span></div>`;
+  const t = r.thesis;
+  return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;padding:6px 2px 10px">
+    ${D.map(s => `<div><h3>${esc(s.title)}</h3>${s.items.map(([l,k,f]) => kv(l, fmt(r[k], f, r))).join("")}</div>`).join("")}</div>
+  ${t ? `<div class="small" style="padding:0 2px 8px"><b>Thesis</b> (${esc(t.conviction||"")} conviction, proposal ${esc(t.from_proposal)}): ${esc(t.thesis)}<br>
+     <b>Bear case:</b> ${esc(t.bear_case)}${t.review_trigger ? `<br><b>Review trigger:</b> ${esc(t.review_trigger)}` : ""}</div>` : ""}`;
+}
+function baseOpts(yfmt){
+  const g = css("--grid"), m = css("--muted");
+  return {responsive:true, maintainAspectRatio:false, animation:false,
+    interaction:{mode:"index", intersect:false},
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label: c => `${c.dataset.label}: ${yfmt(c.parsed.y)}`}}},
+    scales:{x:{grid:{display:false}, ticks:{color:m, maxTicksLimit:8, autoSkip:true}, border:{color:css("--axis")}},
+            y:{grid:{color:g}, ticks:{color:m, callback: v => yfmt(v)}, border:{display:false}}}};
+}
+function perfCharts(navh, B){
+  if (navh.length < 2 || !window.Chart || !$("#cPerf")) return;
+  const lab = navh.map(r => r.date);
+  const idx = k => { const b = navh.find(r => r[k]); return navh.map(r => r[k] && b ? r[k]/b[k]*100 : null); };
+  const ds = (label, data, color) => ({label, data, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.15, spanGaps: true});
+  STATE.charts.push(new Chart($("#cPerf"), {type:"line", data:{labels: lab, datasets:[ds("Fund", idx("nav"), css("--s1")), ...B.map((b,i) => ds(b.label, idx(b.key), css(SERIES[(i+1)%3])))]},
+    options: baseOpts(v => v==null ? "–" : v.toFixed(1))}));
+  const o = baseOpts(v => v==null ? "–" : v.toFixed(1) + "%");
+  o.scales.y.suggestedMin = -20; o.scales.y.max = 0;
+  STATE.charts.push(new Chart($("#cDD"), {type:"line", data:{labels: lab, datasets:[
+    {label:"Drawdown", data: navh.map(r => r.drawdown*100), borderColor: css("--critical"), backgroundColor: alpha(css("--critical"), 0.15), fill: "origin", borderWidth: 2, pointRadius: 0, pointHoverRadius: 4}]}, options: o}));
+}
+
+/* ---------- approval ---------- */
+function list(title, arr, st){ if (!arr || !arr.length) return ""; return `<h3 style="margin-top:12px">${esc(title)}</h3>${arr.map(x => `<div class="small" style="margin:3px 0"><span class="dot st-${st}"></span> ${esc(x)}</div>`).join("")}`; }
+async function renderApproval(){
+  const o = STATE.ov, weeks = STATE.weeks || [];
+  const target = o.pending_approval ? o.pending_approval.folder : (weeks.find(w => w.decision) || {}).date;
+  if (!target){ $("#main").innerHTML = '<div class="card empty">No committee proposal yet for this fund.</div>'; return; }
+  const w = await loadWeek(target);
+  const ev = w.evaluation || {};
+  if (ev.error){ $("#main").innerHTML = `<div class="banner crit">Could not evaluate proposal: ${esc(ev.error)}</div>`; return; }
+  const p = w.proposal || {}, ap = w.approval;
+  const tgt = ev.final_target || {}, curw = ev.current_weights || {};
+  const syms = [...new Set([...Object.keys(tgt), ...Object.keys(curw)])].sort((x,y) => (tgt[y]||0)-(tgt[x]||0));
+  const maxW = Math.max(0.1, ...syms.map(s => Math.max(tgt[s]||0, curw[s]||0)));
+  const status = ap ? (ap.decision ? `<span class="tag APPROVED">APPROVED</span>` : `<span class="tag REJECTED">REJECTED</span>`) + ` <span class="small muted">${esc(ap.decided_at_hkt||"")} via ${esc(ap.via||"")}${ap.executed ? " · executed " + esc(ap.executed) : ap.trigger ? " · " + esc(ap.trigger.message) : ap.decision ? " · awaiting the next execution run" : ""}</span>` : `<span class="tag WARN">AWAITING YOUR DECISION</span>`;
+  const s = ev.summary || {};
+  const hasLots = (ev.orders||[]).some(r => r.lots != null), hasName = (ev.orders||[]).some(r => r.name);
+  $("#main").innerHTML = `
+  <div class="card"><div class="row"><h2 style="margin:0">Proposal ${esc(w.date)} — ${esc((p.decision||"").replace(/_/g," "))}</h2>${status}</div>
+    <p>${esc(p.summary)}</p>
+    <div class="flow">${Object.entries(p.votes || {}).map(([k,v]) => `<b title="${esc(v)}">${esc(k)}: ${esc(typeof v === "string" ? v : JSON.stringify(v))}</b>`).join("")}</div>
+    <div class="small muted">Deviations from the rules-only portfolio: ${esc(typeof p.deviations_from_shadow === "string" ? p.deviations_from_shadow : JSON.stringify(p.deviations_from_shadow || "—"))}</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="grid g2e">
+    <div class="card"><h2>Code risk check</h2>
+      ${ev.caps ? `<div class="small">Gross cap <b>${pct(ev.caps.gross_cap,0)}</b> = min(regime ${pct(ev.caps.regime_cap,0)}, drawdown ladder ${pct(ev.caps.ladder_cap,0)})${ev.caps.buys_frozen ? " · <b>buys frozen</b>" : ""}${ev.caps.halted ? " · <b class='neg'>HALTED</b>" : ""}</div>` : ""}
+      ${s.gross != null ? `<div class="small">Invested after trades <b>${pct(s.gross,1)}</b> · one-way turnover ${pct(s.turnover_one_way,0)} · est. costs ${cur(s.est_cost,0)}</div>` : ""}
+      ${list("Violations (blocked)", ev.violations, "critical")}${list("Automatic adjustments", ev.changes, "serious")}${list("Warnings", ev.warnings, "warning")}${list("Fat-finger guard", ev.fat_finger, "critical")}
+      ${!(ev.violations||[]).length && !(ev.changes||[]).length && !(ev.warnings||[]).length ? '<p class="small"><span class="dot st-good"></span> All hard limits pass as proposed.</p>' : ""}
+      <h3 style="margin-top:14px">Weights: target vs current</h3>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Target (after risk check)</span><span><i style="background:var(--s2)"></i>Current</span></div>
+      ${syms.map(x => `<div class="hbar" title="${esc(x)}: target ${pct(tgt[x]||0)}, current ${pct(curw[x]||0)}"><b class="small">${esc(x)}</b><span class="track"><span class="b t" style="width:${(tgt[x]||0)/maxW*100}%"></span><span class="b c" style="width:${(curw[x]||0)/maxW*100}%"></span></span><span class="small n">${pct(tgt[x]||0)}</span></div>`).join("")}
+      <div class="small muted" style="margin-top:6px">Cash after rebalance ≈ ${pct(1 - Object.values(tgt).reduce((a,b)=>a+b,0),0)}</div>
+    </div>
+    <div class="card"><h2>Orders that will be sent</h2>
+      ${(ev.orders||[]).length ? `<div class="tbl"><table><tr><th>Side</th><th>Symbol</th>${hasName?"<th>Name</th>":""}${hasLots?'<th class="n">Lots</th>':""}<th class="n">Qty</th><th class="n">≈ Value</th>${hasName?"":"<th>Reason</th>"}</tr>${ev.orders.map(r=>`<tr><td><span class="tag ${esc(r.side)}">${esc(r.side)}</span></td><td>${esc(r.symbol)}</td>${hasName?`<td class="small">${esc(r.name||"")}</td>`:""}${hasLots?`<td class="n">${r.lots??""}</td>`:""}<td class="n">${r.qty}</td><td class="n">${cur(r.value,0)}</td>${hasName?"":`<td class="small">${esc(r.reason||"")}</td>`}</tr>`).join("")}</table></div>
+      <p class="small muted">${esc(o.exec_note||"")}</p>` : '<div class="muted">No orders — the target matches current holdings within the rebalance band.</div>'}
+      <h3 style="margin-top:14px">Decision</h3>
+      ${ev.approvable && !ap ? `
+        <label class="small">Note for the audit trail (optional)</label><textarea id="note" placeholder="Why you approve / reject"></textarea>
+        <label class="small" style="display:block;margin-top:8px">Type <b>APPROVE</b> to authorise</label><input id="confirm" autocomplete="off">
+        <div class="row" style="margin-top:10px"><button class="btn primary" id="bApprove" disabled>Approve &amp; queue orders</button><button class="btn danger" id="bReject">Reject</button></div>
+        <div id="decMsg" class="small" style="margin-top:8px"></div>` :
+        ap ? `<p>${ap.decision ? "Approved" : "Rejected"}${ap.note ? `: “${esc(ap.note)}”` : ""}</p>` :
+        `<p class="small neg">Not approvable — see the risk check above${p.status !== "proposed" ? " (status is " + esc(p.status) + ")" : ""}.</p>`}
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="card"><h2>Investment theses</h2><div class="tbl"><table><tr><th>Symbol</th><th class="n">Proposed</th><th>Conviction</th><th>Thesis</th><th>Bear case</th><th>Review trigger</th></tr>
+    ${(p.holdings||[]).map(h => `<tr><td><b>${esc(h.symbol)}</b></td><td class="n">${pct(h.weight)}</td><td>${esc(h.conviction)}</td><td>${esc(h.thesis)}</td><td class="small">${esc(h.bear_case)}</td><td class="small">${esc(h.review_trigger||h.dividend_check||"")}</td></tr>`).join("")}
+    ${(p.exits||[]).map(x => `<tr><td><b>${esc(x.symbol)}</b></td><td class="n">exit</td><td></td><td colspan="3">${esc(x.reason)}</td></tr>`).join("")}</table></div>
+    <p class="small"><a href="#" id="toCommittee">Read the committee memo and every agent's report →</a></p></div>`;
+  $("#toCommittee").onclick = e => { e.preventDefault(); STATE.weekDate = w.date; nav(STATE.fund, "committee"); };
+  const inp = $("#confirm");
+  if (inp){
+    inp.oninput = () => $("#bApprove").disabled = inp.value.trim() !== "APPROVE";
+    $("#bApprove").onclick = () => decide(w.date, "approve");
+    $("#bReject").onclick = () => { if (confirm("Reject this proposal? Nothing will trade.")) decide(w.date, "reject"); };
+  }
+}
+async function decide(folder, decision){
+  const msg = $("#decMsg"); msg.textContent = "Saving…";
+  try {
+    const r = await api(`/api/f/${encodeURIComponent(STATE.fund)}/decision`, {method:"POST", headers:{"Content-Type":"application/json","X-FH-Token":TOKEN},
+      body: JSON.stringify({folder, decision, note: $("#note").value, confirm: $("#confirm").value.trim()})});
+    STATE.week = null; await load(); await render();
+    if (r && r.trigger && r.trigger.started) setTimeout(() => { load().then(render).catch(() => {}); }, 120000);
+  } catch (e){ msg.innerHTML = `<span class="neg">${esc(e.message)}</span>`; }
+}
+
+/* ---------- committee ---------- */
+function agentSummary(key, j){
+  if (!j) return "No structured summary";
+  const c = arr => (arr||[]).join(", ") || "–";
+  switch(key){
+    case "macro": return j.cycle ? `${j.cycle} (${j.confidence}) · max gross ${pct(j.recommended_max_gross,0)} · favour ${c(j.favour_sectors)}` : Object.keys(j).slice(0,3).join(", ");
+    case "sector": return j.overweight ? `Over: ${c(j.overweight)} · Under: ${c(j.underweight)}` : Object.keys(j).slice(0,3).join(", ");
+    case "fundamental": { const r = j.ratings||[]; const n = k => r.filter(x => x.rating===k).length; return `${n("Buy")} Buy · ${n("Hold")} Hold · ${n("Avoid")} Avoid`; }
+    case "technical": { const s = j.signals||[]; const n = k => s.filter(x => x.timing===k).length; return `${n("buy_now")} buy now · ${n("wait")} wait · ${n("avoid")} avoid`; }
+    case "strategy": return j.target_gross != null ? `Target gross ${pct(j.target_gross,0)} · ${j.n_names} names · ${j.sizing}` : Object.keys(j).slice(0,3).join(", ");
+    case "risk": return j.verdict ? `Verdict: ${String(j.verdict).toUpperCase()}` + (j.stress_minus10_pct != null ? ` · −10% market ≈ ${pct(j.stress_minus10_pct)}` : "") : Object.keys(j).slice(0,3).join(", ");
+    default: return Object.keys(j).slice(0,3).join(", ");
+  }
+}
+function firstLine(mdText){ const l = (mdText||"").split("\n").map(s => s.replace(/[#*_>`]/g,"").trim()).filter(Boolean); return (l[1] || l[0] || "").slice(0, 110); }
+function pmSummary(p){ const h = p.holdings||[]; return `${h.length} names · ${pct(h.reduce((a,x)=>a+(x.weight||0),0),0)} proposed gross · ${(p.exits||[]).length} exits`; }
+async function renderCommittee(){
+  const weeks = STATE.weeks || [], o = STATE.ov;
+  if (!weeks.length){ $("#main").innerHTML = '<div class="card empty">No research folders yet.</div>'; return; }
+  const date = STATE.weekDate || (weeks.find(w => w.decision) || weeks[0]).date;
+  const w = await loadWeek(date);
+  const p = w.proposal, ap = w.approval;
+  $("#main").innerHTML = `<div class="grid cm">
+    <div><div class="row" style="margin-bottom:8px"><select id="wkFilter"><option value="all">All days</option><option value="committee">Committee proposals</option><option value="brief">Briefs &amp; reviews</option></select></div>
+      <div class="weeks" id="weekList"></div></div>
+    <div>
+      <div class="card"><div class="row"><h2 style="margin:0">${esc(date)}</h2>
+        ${p ? `<span class="tag">${esc(p.decision)}</span>` : ""}${ap ? `<span class="tag ${ap.decision?"APPROVED":"REJECTED"}">${ap.decision?"APPROVED":"REJECTED"}</span>` : p ? '<span class="tag WARN">PENDING</span>' : ""}${ap && ap.executed ? `<span class="small muted">executed ${esc(ap.executed)}</span>` : ""}</div>
+        ${w.blocked ? `<div class="banner crit" style="margin-top:10px">${md(w.blocked)}</div>` : ""}
+        ${Object.keys(w.reports).length ? `<div class="flow" style="margin-top:12px">${esc(o.flow||"").split(" → ").map(x => `<b>${esc(x)}</b>`).join("→")}</div>
+        <div class="agents">${w.order.filter(k => w.reports[k]).map(k => `<div class="agent" data-k="${k}"><div class="r">${esc(w.reports[k].title)}</div><div class="t">${esc(k==="pm" && p ? pmSummary(p) : (w.reports[k].json ? agentSummary(k, w.reports[k].json) : firstLine(w.reports[k].markdown)))}</div><div class="small muted">Read report →</div></div>`).join("")}
+          ${w.memo ? `<div class="agent" id="cioCard"><div class="r">Fund Manager / CIO</div><div class="t">${esc(p ? "Decision: " + (p.decision||"").replace(/_/g," ") : "Memo")}</div><div class="small muted">Read memo ↓</div></div>` : ""}</div>` : ""}
+      </div>
+      <div id="reportView"></div>
+      ${w.memo ? `<div class="spacer"></div><div class="card md" id="memo">${md(w.memo)}</div>` : ""}
+      ${w.daily_brief ? `<div class="spacer"></div><div class="card"><h3>Brief / review</h3><div class="md">${md(w.daily_brief)}</div></div>` : ""}
+      ${ap ? `<div class="spacer"></div><div class="card"><h3>Approval record</h3><div class="small">${ap.decision?"Approved":"Rejected"} ${esc(ap.decided_at_hkt||"")} via ${esc(ap.via||"")}${ap.note?` — “${esc(ap.note)}”`:""}</div>
+        ${(ap.changes||[]).length?`<div class="small muted">Risk-check adjustments at approval: ${ap.changes.map(esc).join("; ")}</div>`:""}</div>` : ""}
+      ${w.execution ? `<div class="spacer"></div><div class="card"><h3>Execution</h3>${execTable(w.execution)}</div>` : ""}
+      <div class="spacer"></div>
+      <details><summary>Research pack (all numbers the agents used)</summary><div class="md">${md(w.pack_md || "_No pack in this folder_")}</div></details>
+      <details><summary>Files in this folder (${w.files.length})</summary>${w.files.map(f => `<div class="small"><a target="_blank" href="/api/file?path=${encodeURIComponent(w.base+"/"+f)}">${esc(f)}</a></div>`).join("")}</details>
+    </div></div>`;
+  const drawWeeks = () => {
+    const f = STATE.weekFilter;
+    const ws = weeks.filter(x => f==="all" || (f==="committee" ? x.decision || x.blocked : x.has_brief));
+    $("#weekList").innerHTML = ws.map(x => `<div class="week ${x.date===date?"on":""}" data-d="${esc(x.date)}"><div class="d">${esc(x.date)}</div>
+      <div class="small muted">${x.decision ? esc(x.decision.replace(/_/g," ")) : x.blocked ? "committee blocked" : x.has_brief ? "brief / review" : "data only"}
+      ${x.approval ? ` · <span class="${x.approval==="approved"?"pos":"neg"}">${esc(x.approval)}</span>` : x.decision ? " · <b>pending</b>" : ""}</div></div>`).join("") || '<div class="muted small">None</div>';
+    document.querySelectorAll(".week").forEach(el => el.onclick = () => { STATE.weekDate = el.dataset.d; renderCommittee(); });
+  };
+  $("#wkFilter").value = STATE.weekFilter;
+  $("#wkFilter").onchange = () => { STATE.weekFilter = $("#wkFilter").value; drawWeeks(); };
+  drawWeeks();
+  if ($("#cioCard")) $("#cioCard").onclick = () => $("#memo").scrollIntoView({behavior:"smooth"});
+  document.querySelectorAll(".agent[data-k]").forEach(el => el.onclick = () => {
+    const r = w.reports[el.dataset.k];
+    const i = r.markdown.lastIndexOf("```json");
+    const body = i >= 0 && r.json ? r.markdown.slice(0, i) : r.markdown;
+    $("#reportView").innerHTML = `<div class="spacer"></div><div class="card"><div class="row"><h2 style="margin:0">${esc(r.title)}</h2><button class="btn" id="closeRep" style="margin-left:auto">Close</button></div><div class="md">${md(body)}</div>
+      ${r.json ? `<details><summary>Structured output (JSON)</summary><pre class="small">${esc(JSON.stringify(r.json, null, 2))}</pre></details>` : ""}</div>`;
+    $("#closeRep").onclick = () => $("#reportView").innerHTML = "";
+    $("#reportView").scrollIntoView({behavior:"smooth"});
+  });
+}
+function execTable(x){
+  const runs = x.runs ? x.runs : [{results: x.results || []}];
+  return runs.map(r => `${r.time_hkt ? `<div class="small muted" style="margin-top:6px">${esc(r.time_hkt)}</div>` : ""}<div class="tbl"><table><tr><th>Symbol</th><th>Side</th><th class="n">Qty</th><th class="n">Filled</th><th class="n">Avg / limit</th><th>Status</th></tr>${(r.results||[]).map(q=>`<tr><td>${esc(q.symbol)}</td><td>${esc(q.side||"")}</td><td class="n">${q.qty??""}</td><td class="n">${q.filled??""}</td><td class="n">${q.avg_price ?? q.limit ?? (q.limits||[]).join(", ")}</td><td class="small">${esc(q.status)}</td></tr>`).join("")}</table></div>`).join("");
+}
+
+/* ---------- market (blocks from the adapter) ---------- */
+async function renderMarket(){
+  if (!STATE.mkt) STATE.mkt = await fapi("market");
+  const B = STATE.mkt.blocks || [];
+  const half = B.filter(b => b.half), full = B.filter(b => !b.half);
+  const box = (b, i) => {
+    if (b.type === "kv") return `<div class="card"><h2>${esc(b.title)}</h2><table>${b.rows.map(([k,v]) => `<tr><td>${k}</td><td class="n">${v}</td></tr>`).join("")}</table></div>`;
+    if (b.type === "text") return `<div class="card"><h2>${esc(b.title)}</h2><div class="small">${b.html}</div></div>`;
+    return `<div class="card"><div class="row"><h2 style="margin:0">${esc(b.title)}</h2>${b.filter ? `<input data-q="${i}" placeholder="Filter" style="max-width:240px;margin-left:auto">` : ""}</div>
+      ${b.note ? `<p class="small muted">${esc(b.note)}</p>` : ""}<div class="tbl" id="mt${i}" style="margin-top:8px"></div></div>`;
+  };
+  const idx = b => B.indexOf(b);
+  $("#main").innerHTML = (STATE.mkt.asof ? `<div class="small muted" style="margin-bottom:10px">Research pack ${esc(STATE.mkt.asof)}</div>` : "") +
+    (half.length ? `<div class="grid g2e">${half.map(b => box(b, idx(b))).join("")}</div><div class="spacer"></div>` : "") +
+    full.map(b => box(b, idx(b))).join('<div class="spacer"></div>');
+  B.forEach((b, i) => { if (b.type !== "table") return;
+    let sortK = b.sort || null, asc = true;
+    const draw = () => {
+      const qi = document.querySelector(`[data-q="${i}"]`), q = qi ? qi.value.toLowerCase() : "";
+      let rows = (b.rows||[]).filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+      if (sortK) rows = rows.slice().sort((x,y) => { const a=x[sortK], c=y[sortK]; if (a==null) return 1; if (c==null) return -1; return (a>c?1:a<c?-1:0)*(asc?1:-1); });
+      document.getElementById("mt"+i).innerHTML = rows.length ? `<table><tr>${b.cols.map(([k,t,f]) => `<th class="${isNumCol(f)?"n":""}" data-k="${k}" style="cursor:pointer">${esc(t)}${sortK===k?(asc?" ▲":" ▼"):""}</th>`).join("")}</tr>
+        ${rows.map(r => `<tr>${b.cols.map(([k,,f]) => `<td class="${isNumCol(f)?"n":""}">${fmt(r[k], f, r)}</td>`).join("")}</tr>`).join("")}</table>` : '<div class="muted small">No data.</div>';
+      document.querySelectorAll(`#mt${i} th`).forEach(th => th.onclick = () => { const k = th.dataset.k; asc = sortK===k ? !asc : true; sortK = k; draw(); });
+    };
+    const qi = document.querySelector(`[data-q="${i}"]`); if (qi) qi.oninput = draw;
+    draw(); });
+}
+
+/* ---------- audit ---------- */
+async function renderAudit(){
+  if (!STATE.audit) STATE.audit = await fapi("audit");
+  const ev = STATE.audit.events;
+  $("#main").innerHTML = `<div class="card"><div class="row"><h2 style="margin:0">Audit trail</h2>
+      <select id="ak" style="max-width:180px;margin-left:auto"><option value="">All events</option><option value="decision">Your decisions</option><option value="committee">Committee proposals</option><option value="fill">Fills</option><option value="alert">Alerts</option></select>
+      <input id="aq" placeholder="Search" style="max-width:220px"></div>
+    <p class="small muted">Every proposal, approval, fill and risk alert for this fund, newest first. Raw files:
+      ${(STATE.audit.files||[]).map(f => `<a target="_blank" href="/api/file?path=${encodeURIComponent(f)}">${esc(f.split("/").pop())}</a>`).join(" · ")}</p>
+    <div class="tbl" id="atbl"></div></div>`;
+  const draw = () => {
+    const k = $("#ak").value, q = $("#aq").value.toLowerCase();
+    const rows = ev.filter(e => (!k || e.kind===k) && (!q || JSON.stringify(e).toLowerCase().includes(q))).slice(0, 800);
+    $("#atbl").innerHTML = `<table><tr><th>Time (HKT)</th><th>Type</th><th>Level</th><th>Event</th></tr>${rows.map(e => `<tr><td class="small" style="white-space:nowrap">${esc(String(e.time||"").replace("T"," ").slice(0,16))}</td><td class="small">${esc(e.kind)}</td><td><span class="tag ${esc(e.level)}">${esc(e.level)}</span></td>
+      <td>${esc(e.text)}${e.folder ? ` <a href="#" data-f="${esc(e.folder)}" class="small">open</a>` : ""}</td></tr>`).join("")}</table>${rows.length ? "" : '<div class="empty">No matching events</div>'}`;
+    document.querySelectorAll("#atbl a[data-f]").forEach(a => a.onclick = e => { e.preventDefault(); STATE.weekDate = a.dataset.f; nav(STATE.fund, "committee"); });
+  };
+  $("#ak").onchange = draw; $("#aq").oninput = draw; draw();
+}
+
+/* ---------- routing: #/ = cover, #/<fund>/<tab> ---------- */
+const TABS = {overview: renderOverview, approval: renderApproval, committee: renderCommittee, market: renderMarket, audit: renderAudit};
+function parseHash(){
+  const [f, t] = location.hash.replace(/^#\/?/, "").split("/");
+  return {fund: f || null, tab: TABS[t] ? t : "overview"};
+}
+function nav(fundId, tab){ location.hash = fundId ? `#/${fundId}/${tab || "overview"}` : "#/"; }
+async function loadWeek(date){
+  if (STATE.week && STATE.week.date === date && STATE.week._fund === STATE.fund) return STATE.week;
+  STATE.week = await fapi("week", "?d=" + encodeURIComponent(date)); STATE.week._fund = STATE.fund;
+  return STATE.week;
+}
+async function load(){
+  if (!STATE.fund){
+    STATE.cover = await api("/api/funds");
+  } else {
+    const [ov, weeks] = await Promise.all([fapi("overview"), fapi("weeks")]);
+    STATE.ov = ov; STATE.weeks = weeks; CCY = ov.currency;
+    if (!STATE.cover) api("/api/funds").then(c => { STATE.cover = c; header(); }).catch(() => {});
+  }
+  STATE.audit = null; STATE.week = null; STATE.mkt = null;
+  header();
+}
+async function render(){
+  killCharts();
+  header();
+  try {
+    if (!STATE.fund) renderCover();
+    else await TABS[STATE.tab]();
+  } catch(e){ $("#main").innerHTML = `<div class="banner crit">${esc(e.message)}</div>`; }
+}
+async function route(){
+  const r = parseHash(), changed = r.fund !== STATE.fund;
+  STATE.tab = r.tab;
+  if (changed){ STATE.fund = r.fund; STATE.ov = null; STATE.weekDate = null; STATE.openHold = null; STATE.holdSort = "weight"; STATE.holdAsc = false;
+    $("#main").innerHTML = '<div class="empty">Loading…</div>'; }
+  try { if (changed || !STATE.cover) await load(); await render(); window.scrollTo(0,0); }
+  catch(e){ $("#main").innerHTML = `<div class="banner crit">Cannot load: ${esc(e.message)}</div>`; }
+}
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => nav(STATE.fund, b.dataset.tab));
+window.addEventListener("hashchange", route);
+route();
+setInterval(async () => { if ((!STATE.fund || STATE.tab === "overview") && !document.hidden) { try { await load(); render(); } catch(e){} } }, 120000);
+</script>
+</body>
+</html>

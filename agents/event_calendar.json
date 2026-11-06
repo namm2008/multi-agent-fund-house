@@ -1,0 +1,21 @@
+{
+  "note": "Scheduled US macro events that trigger the next morning's mid-week review. Dates are the US session on which the market first reacts (FOMC = decision day, 14:00 ET; CPI / jobs / PCE = 08:30 ET release day). Sources: federalreserve.gov FOMC calendar (via fedratecalc.com), BLS 2026/2027 release schedules, BEA schedule. Holdings' earnings dates come from the latest weekly fundamental report, not from this file.",
+  "valid_until": "2026-12-31",
+  "updated": "2026-10-25",
+  "events": [
+    {"date": "2026-10-28", "name": "FOMC decision"},
+    {"date": "2026-10-29", "name": "PCE (Sep) + GDP Q3 advance"},
+    {"date": "2026-11-06", "name": "Jobs report (Oct)"},
+    {"date": "2026-11-10", "name": "CPI (Oct)"},
+    {"date": "2026-11-25", "name": "PCE (Oct)"},
+    {"date": "2026-12-04", "name": "Jobs report (Nov)"},
+    {"date": "2026-12-09", "name": "FOMC decision"},
+    {"date": "2026-12-10", "name": "CPI (Nov)"},
+    {"date": "2026-12-23", "name": "PCE (Nov)"},
+    {"date": "2027-01-08", "name": "Jobs report (Dec)"},
+    {"date": "2027-01-27", "name": "FOMC decision"},
+    {"date": "2027-02-05", "name": "Jobs report (Jan)"},
+    {"date": "2027-03-05", "name": "Jobs report (Feb)"},
+    {"date": "2027-03-17", "name": "FOMC decision"}
+  ]
+}

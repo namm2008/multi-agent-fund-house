@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Fund House target portfolio proposal",
+  "type": "object",
+  "required": [
+    "asof",
+    "status",
+    "decision",
+    "summary",
+    "target_gross_exposure",
+    "holdings"
+  ],
+  "properties": {
+    "asof": {
+      "type": "string",
+      "description": "pack date YYYY-MM-DD"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "proposed"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "initial_deployment",
+        "rebalance",
+        "hold",
+        "de-risk",
+        "add",
+        "cut"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "description": "<= 1200 chars, shown at approval"
+    },
+    "target_gross_exposure": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.98
+    },
+    "holdings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "symbol",
+          "weight",
+          "conviction",
+          "thesis",
+          "bear_case"
+        ],
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "IBKR symbol, e.g. 'BRK B'"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.04,
+            "maximum": 0.1
+          },
+          "conviction": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "thesis": {
+            "type": "string"
+          },
+          "bear_case": {
+            "type": "string"
+          },
+          "review_trigger": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "exits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "symbol",
+          "reason"
+        ],
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "deviations_from_shadow": {
+      "type": "string"
+    },
+    "votes": {
+      "type": "object",
+      "description": "one-line stance per role"
+    },
+    "type": {
+      "enum": [
+        "weekly",
+        "midweek"
+      ],
+      "description": "weekly committee (default) or event-triggered mid-week review"
+    },
+    "next_steps": {
+      "type": "object",
+      "description": "weekly only: pre-committed plan checked by the mid-week review",
+      "properties": {
+        "add_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "add_target_gross": {
+          "type": "number"
+        },
+        "add_candidates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6
+        },
+        "cut_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cut_target_gross": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}
